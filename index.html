@@ -39,7 +39,7 @@
   <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Source+Code+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
   <!-- Swagger UI Light Theme Styles -->
@@ -83,7 +83,67 @@
   <main class="swagger-ui-container">
     <!-- Info / Overview Section -->
     <section class="info-section" id="info-section">
-      <!-- Populated dynamically by app.js -->
+      <h1 class="info-title">
+        Clinic CRM — API Contract & Reference
+        <span class="info-version">v1.0</span>
+      </h1>
+      <p class="info-description">Complete API contract for the Clinic Management System: Patients, Appointments, Doctors, Medical Records, Billing, Inventory, Reports, and Roles & Permissions.</p>
+      
+      <div class="created-by-banner">
+        <span>Created & Maintained by</span>
+        <div class="devesters-logo-brand" style="scale: 0.85;">
+          <img src="devesters_icon.webp" alt="D" class="devesters-d-icon" />
+          <span class="devesters-text" style="color: #0f172a;">EVesters</span>
+        </div>
+      </div>
+
+      <div class="base-url-bar">
+        <strong>Base URL:</strong> <span>https://api.[CLINIC_DOMAIN].com/v1</span>
+      </div>
+
+      <!-- Prominent RBAC Permission Matrix Card -->
+      <div style="margin-top: 24px;">
+        <button id="btn-toggle-rbac-matrix" style="background: #ef4444; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; color: #ffffff; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); font-size: 14px; transition: all 0.2s ease;">
+          <i class="fas fa-user-shield" style="font-size: 16px;"></i> View RBAC Permission Matrix <i class="fas fa-chevron-down" id="rbac-matrix-chevron" style="transition: transform 0.2s ease;"></i>
+        </button>
+        
+        <div id="rbac-matrix-card" style="display: none; margin-top: 16px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 24px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); overflow-x: auto;">
+          <h4 style="font-size: 17px; font-weight: 800; margin-bottom: 6px; color: #0f172a;">Detailed RBAC Permission Matrix Across Modules</h4>
+          <p style="font-size: 13.5px; color: #64748b; margin-bottom: 18px;">System-wide role permissions breakdown mapping super_admin, support_admin, clinic managers, medical practitioners, and patients.</p>
+
+          <table class="parameters-table" style="min-width: 900px; width: 100%;">
+            <thead>
+              <tr style="background: #f8fafc;">
+                <th style="width: 22%; padding: 12px 10px;">Module / Feature</th>
+                <th style="text-align:center; padding: 12px 6px;">super_admin</th>
+                <th style="text-align:center; padding: 12px 6px;">support_admin</th>
+                <th style="text-align:center; padding: 12px 6px;">clinic_manager</th>
+                <th style="text-align:center; padding: 12px 6px;">doctor</th>
+                <th style="text-align:center; padding: 12px 6px;">receptionist</th>
+                <th style="text-align:center; padding: 12px 6px;">nurse</th>
+                <th style="text-align:center; padding: 12px 6px;">accountant</th>
+                <th style="text-align:center; padding: 12px 6px;">patient</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style="padding: 10px;"><strong>Platform Settings & DB</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
+              <tr><td style="padding: 10px;"><strong>Manage Clinics & Branches</strong></td><td align="center">✅ Full</td><td align="center">✅ Onboard</td><td align="center">⚠️ Branch</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
+              <tr><td style="padding: 10px;"><strong>Manage Users & Staff</strong></td><td align="center">✅ Full</td><td align="center">✅ Setup</td><td align="center">✅ Staff</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
+              <tr><td style="padding: 10px;"><strong>Roles & Permissions</strong></td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
+              <tr><td style="padding: 10px;"><strong>Patient Profiles</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Read/Edit</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
+              <tr><td style="padding: 10px;"><strong>Doctors & Schedules</strong></td><td align="center">✅ Full</td><td align="center">✅ Setup</td><td align="center">✅ Full</td><td align="center">✏️ Schedule</td><td align="center">👁️ Read</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Read</td></tr>
+              <tr><td style="padding: 10px;"><strong>Appointments & Booking</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Own</td><td align="center">✅ Full</td><td align="center">✅ Check-in</td><td align="center">❌</td><td align="center">✏️ Book</td></tr>
+              <tr><td style="padding: 10px;"><strong>QR Code Check-in</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">✅ Scan/Check-in</td><td align="center">✅ Scan/Check-in</td><td align="center">❌</td><td align="center">👁️ Self QR</td></tr>
+              <tr><td style="padding: 10px;"><strong>Consultations & Vitals</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">✍️ Author</td><td align="center">❌</td><td align="center">✏️ Vitals</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
+              <tr><td style="padding: 10px;"><strong>Prescriptions</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">✍️ Author</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
+              <tr><td style="padding: 10px;"><strong>Invoices & Payments</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Collect</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">👁️ Self Pay</td></tr>
+              <tr><td style="padding: 10px;"><strong>Inventory & Stock</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">✏️ Adjust</td><td align="center">❌</td><td align="center">❌</td></tr>
+              <tr><td style="padding: 10px;"><strong>Reports & Analytics</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Branch</td><td align="center">👁️ Self</td><td align="center">❌</td><td align="center">❌</td><td align="center">💵 Financial</td><td align="center">❌</td></tr>
+              <tr><td style="padding: 10px;"><strong>Audit Logs</strong></td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- Method Quick Filter Bar -->

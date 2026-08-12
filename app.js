@@ -19,7 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // DOM Elements
-  const infoSection = document.getElementById("info-section");
   const endpointsList = document.getElementById("swagger-endpoints-list");
   const searchInput = document.getElementById("search-input");
   const schemeSelector = document.getElementById("scheme-selector");
@@ -32,8 +31,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputClinicId = document.getElementById("input-clinic-id");
   const filterPills = document.querySelectorAll(".swagger-filter-pill");
 
+  // Attach RBAC Matrix Toggle Event Listener
+  attachRbacMatrixToggle();
+
   // Initial Render
-  renderInfoSection();
   renderEndpoints();
 
   // Event Listeners — Search
@@ -81,84 +82,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ==========================================================================
-  // Info Section Render with DEVesters Signature & RBAC Matrix
-  // ==========================================================================
-  function renderInfoSection() {
-    if (!infoSection) return;
-
-    infoSection.innerHTML = `
-      <h1 class="info-title">
-        ${data.info.title}
-        <span class="info-version">${data.info.version}</span>
-      </h1>
-      <p class="info-description">${data.info.description}</p>
-      
-      <div class="created-by-banner">
-        <span>Created & Maintained by</span>
-        <div class="devesters-logo-brand" style="scale: 0.85;">
-          <img src="devesters_icon.webp" alt="D" class="devesters-d-icon" />
-          <span class="devesters-text" style="color: #0f172a;">EVesters</span>
-        </div>
-      </div>
-
-      <div class="base-url-bar">
-        <strong>Base URL:</strong> <span>${data.info.baseUrl}</span>
-      </div>
-
-      <!-- Interactive RBAC Permission Matrix Card -->
-      <div style="margin-top: 20px;">
-        <button id="btn-toggle-rbac-matrix" style="background: #ffffff; border: 1px solid var(--swagger-border); padding: 8px 18px; border-radius: var(--radius-md); font-weight: 700; color: #0f172a; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: var(--shadow-sm); font-size: 13.5px;">
-          <i class="fas fa-user-shield" style="color: var(--devesters-red);"></i> View RBAC Permission Matrix <i class="fas fa-chevron-down" id="rbac-matrix-chevron"></i>
-        </button>
-        
-        <div id="rbac-matrix-card" style="display: none; margin-top: 14px; background: #ffffff; border: 1px solid var(--swagger-border); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-glass); overflow-x: auto;">
-          <h4 style="font-size: 16px; font-weight: 800; margin-bottom: 6px; color: #0f172a;">Detailed RBAC Permission Matrix Across Modules</h4>
-          <p style="font-size: 13px; color: var(--swagger-text-muted); margin-bottom: 16px;">System-wide role permissions breakdown mapping super_admin, support_admin, clinic managers, medical practitioners, and patients.</p>
-
-          <table class="parameters-table" style="min-width: 900px;">
-            <thead>
-              <tr>
-                <th style="width: 22%;">Module / Feature</th>
-                <th style="text-align:center;">super_admin</th>
-                <th style="text-align:center;">support_admin</th>
-                <th style="text-align:center;">clinic_manager</th>
-                <th style="text-align:center;">doctor</th>
-                <th style="text-align:center;">receptionist</th>
-                <th style="text-align:center;">nurse</th>
-                <th style="text-align:center;">accountant</th>
-                <th style="text-align:center;">patient</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td><strong>Platform Settings & DB</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
-              <tr><td><strong>Manage Clinics & Branches</strong></td><td align="center">✅ Full</td><td align="center">✅ Onboard</td><td align="center">⚠️ Branch</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
-              <tr><td><strong>Manage Users & Staff</strong></td><td align="center">✅ Full</td><td align="center">✅ Setup</td><td align="center">✅ Staff</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
-              <tr><td><strong>Roles & Permissions</strong></td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
-              <tr><td><strong>Patient Profiles</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Read/Edit</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
-              <tr><td><strong>Doctors & Schedules</strong></td><td align="center">✅ Full</td><td align="center">✅ Setup</td><td align="center">✅ Full</td><td align="center">✏️ Schedule</td><td align="center">👁️ Read</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Read</td></tr>
-              <tr><td><strong>Appointments & Booking</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Own</td><td align="center">✅ Full</td><td align="center">✅ Check-in</td><td align="center">❌</td><td align="center">✏️ Book</td></tr>
-              <tr><td><strong>QR Code Check-in</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">✅ Scan/Check-in</td><td align="center">✅ Scan/Check-in</td><td align="center">❌</td><td align="center">👁️ Self QR</td></tr>
-              <tr><td><strong>Consultations & Vitals</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">✍️ Author</td><td align="center">❌</td><td align="center">✏️ Vitals</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
-              <tr><td><strong>Prescriptions</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">✍️ Author</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
-              <tr><td><strong>Invoices & Payments</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Collect</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">👁️ Self Pay</td></tr>
-              <tr><td><strong>Inventory & Stock</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">✏️ Adjust</td><td align="center">❌</td><td align="center">❌</td></tr>
-              <tr><td><strong>Reports & Analytics</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Branch</td><td align="center">👁️ Self</td><td align="center">❌</td><td align="center">❌</td><td align="center">💵 Financial</td><td align="center">❌</td></tr>
-              <tr><td><strong>Audit Logs</strong></td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `;
-
-    // Attach Toggle for RBAC Card
+  function attachRbacMatrixToggle() {
     const btnToggle = document.getElementById("btn-toggle-rbac-matrix");
     const matrixCard = document.getElementById("rbac-matrix-card");
     const chevron = document.getElementById("rbac-matrix-chevron");
 
     if (btnToggle && matrixCard) {
       btnToggle.addEventListener("click", () => {
-        const isHidden = matrixCard.style.display === "none";
+        const isHidden = matrixCard.style.display === "none" || !matrixCard.style.display;
         matrixCard.style.display = isHidden ? "block" : "none";
         if (chevron) chevron.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)";
       });
