@@ -1,51 +1,42 @@
-/**
- * Clinic CRM API Documentation Portal — Standard Swagger UI Application Logic
- * Branded for DEVesters
- */
+/* ==========================================================================
+   Swagger UI Interactive Client Application (DEVesters)
+   ========================================================================== */
 
 document.addEventListener("DOMContentLoaded", () => {
   const data = window.API_DATA;
   if (!data) {
-    console.error("API_DATA not loaded.");
+    console.error("API_DATA structure is missing.");
     return;
   }
 
-  // App State
+  // Application State
   const state = {
-    searchQuery: "",
     selectedMethod: "ALL",
-    authToken: localStorage.getItem("clinic_crm_token") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.sample_jwt",
-    clinicId: localStorage.getItem("clinic_crm_clinic_id") || "cli_a1b2c3",
-    baseUrl: data.info.baseUrl
+    searchQuery: "",
+    authToken: "",
+    clinicId: data.info.defaultClinicId,
+    expandedEndpoints: new Set()
   };
 
-  // Element References
+  // DOM Elements
   const infoSection = document.getElementById("info-section");
   const endpointsList = document.getElementById("swagger-endpoints-list");
   const searchInput = document.getElementById("search-input");
-  const filterPills = document.querySelectorAll(".swagger-filter-pill");
-  const authBtn = document.getElementById("btn-authorize");
+  const schemeSelector = document.getElementById("scheme-selector");
+  const btnAuthorize = document.getElementById("btn-authorize");
   const authModal = document.getElementById("auth-modal");
-  const closeModalBtn = document.getElementById("btn-close-modal");
-  const closeAuthModalBtn = document.getElementById("btn-close-auth-modal");
-  const saveAuthBtn = document.getElementById("btn-save-auth");
-  const authTokenInput = document.getElementById("input-auth-token");
-  const authClinicIdInput = document.getElementById("input-clinic-id");
+  const btnCloseModal = document.getElementById("btn-close-modal");
+  const btnCloseAuthModal = document.getElementById("btn-close-auth-modal");
+  const btnSaveAuth = document.getElementById("btn-save-auth");
+  const inputAuthToken = document.getElementById("input-auth-token");
+  const inputClinicId = document.getElementById("input-clinic-id");
+  const filterPills = document.querySelectorAll(".swagger-filter-pill");
 
-  // Populate Auth Modal Inputs
-  authTokenInput.value = state.authToken;
-  authClinicIdInput.value = state.clinicId;
-  updateAuthButtonState();
-
-  // Initialize Render
+  // Initial Render
   renderInfoSection();
   renderEndpoints();
 
-  // ==========================================================================
-  // Event Handlers
-  // ==========================================================================
-
-  // Search Input Filter
+  // Event Listeners — Search
   if (searchInput) {
     searchInput.addEventListener("input", (e) => {
       state.searchQuery = e.target.value.toLowerCase().trim();
@@ -58,46 +49,40 @@ document.addEventListener("DOMContentLoaded", () => {
     pill.addEventListener("click", () => {
       filterPills.forEach((p) => p.classList.remove("active"));
       pill.classList.add("active");
-      state.selectedMethod = pill.getAttribute("data-method") || "ALL";
+      state.selectedMethod = pill.getAttribute("data-method");
       renderEndpoints();
     });
   });
 
-  // Authorize Modal Handlers
-  if (authBtn) {
-    authBtn.addEventListener("click", () => {
+  // Modal Listeners
+  if (btnAuthorize) {
+    btnAuthorize.addEventListener("click", () => {
       authModal.classList.add("active");
     });
   }
 
-  const closeAuthModal = () => authModal.classList.remove("active");
-  if (closeModalBtn) closeModalBtn.addEventListener("click", closeAuthModal);
-  if (closeAuthModalBtn) closeAuthModalBtn.addEventListener("click", closeAuthModal);
+  const closeModal = () => authModal.classList.remove("active");
+  if (btnCloseModal) btnCloseModal.addEventListener("click", closeModal);
+  if (btnCloseAuthModal) btnCloseAuthModal.addEventListener("click", closeModal);
 
-  if (saveAuthBtn) {
-    saveAuthBtn.addEventListener("click", () => {
-      state.authToken = authTokenInput.value.trim();
-      state.clinicId = authClinicIdInput.value.trim();
-      localStorage.setItem("clinic_crm_token", state.authToken);
-      localStorage.setItem("clinic_crm_clinic_id", state.clinicId);
-      updateAuthButtonState();
-      closeAuthModal();
-      renderEndpoints();
+  if (btnSaveAuth) {
+    btnSaveAuth.addEventListener("click", () => {
+      state.authToken = inputAuthToken.value.trim();
+      state.clinicId = inputClinicId.value.trim() || data.info.defaultClinicId;
+      
+      if (state.authToken) {
+        btnAuthorize.classList.add("authorized");
+        btnAuthorize.innerHTML = `Authorized <i class="fas fa-lock-open"></i>`;
+      } else {
+        btnAuthorize.classList.remove("authorized");
+        btnAuthorize.innerHTML = `Authorize <i class="fas fa-lock"></i>`;
+      }
+      closeModal();
     });
   }
 
-  function updateAuthButtonState() {
-    if (state.authToken) {
-      authBtn.classList.add("authorized");
-      authBtn.innerHTML = 'Authorized <i class="fas fa-lock"></i>';
-    } else {
-      authBtn.classList.remove("authorized");
-      authBtn.innerHTML = 'Authorize <i class="fas fa-lock-open"></i>';
-    }
-  }
-
   // ==========================================================================
-  // Info Section Render with DEVesters Signature
+  // Info Section Render with DEVesters Signature & RBAC Matrix
   // ==========================================================================
   function renderInfoSection() {
     if (!infoSection) return;
@@ -120,7 +105,64 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="base-url-bar">
         <strong>Base URL:</strong> <span>${data.info.baseUrl}</span>
       </div>
+
+      <!-- Interactive RBAC Permission Matrix Card -->
+      <div style="margin-top: 20px;">
+        <button id="btn-toggle-rbac-matrix" style="background: #ffffff; border: 1px solid var(--swagger-border); padding: 8px 18px; border-radius: var(--radius-md); font-weight: 700; color: #0f172a; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: var(--shadow-sm); font-size: 13.5px;">
+          <i class="fas fa-user-shield" style="color: var(--devesters-red);"></i> View RBAC Permission Matrix <i class="fas fa-chevron-down" id="rbac-matrix-chevron"></i>
+        </button>
+        
+        <div id="rbac-matrix-card" style="display: none; margin-top: 14px; background: #ffffff; border: 1px solid var(--swagger-border); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-glass); overflow-x: auto;">
+          <h4 style="font-size: 16px; font-weight: 800; margin-bottom: 6px; color: #0f172a;">Detailed RBAC Permission Matrix Across Modules</h4>
+          <p style="font-size: 13px; color: var(--swagger-text-muted); margin-bottom: 16px;">System-wide role permissions breakdown mapping super_admin, support_admin, clinic managers, medical practitioners, and patients.</p>
+
+          <table class="parameters-table" style="min-width: 900px;">
+            <thead>
+              <tr>
+                <th style="width: 22%;">Module / Feature</th>
+                <th style="text-align:center;">super_admin</th>
+                <th style="text-align:center;">support_admin</th>
+                <th style="text-align:center;">clinic_manager</th>
+                <th style="text-align:center;">doctor</th>
+                <th style="text-align:center;">receptionist</th>
+                <th style="text-align:center;">nurse</th>
+                <th style="text-align:center;">accountant</th>
+                <th style="text-align:center;">patient</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Platform Settings & DB</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
+              <tr><td><strong>Manage Clinics & Branches</strong></td><td align="center">✅ Full</td><td align="center">✅ Onboard</td><td align="center">⚠️ Branch</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
+              <tr><td><strong>Manage Users & Staff</strong></td><td align="center">✅ Full</td><td align="center">✅ Setup</td><td align="center">✅ Staff</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
+              <tr><td><strong>Roles & Permissions</strong></td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
+              <tr><td><strong>Patient Profiles</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Read/Edit</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
+              <tr><td><strong>Doctors & Schedules</strong></td><td align="center">✅ Full</td><td align="center">✅ Setup</td><td align="center">✅ Full</td><td align="center">✏️ Schedule</td><td align="center">👁️ Read</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Read</td></tr>
+              <tr><td><strong>Appointments & Booking</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Own</td><td align="center">✅ Full</td><td align="center">✅ Check-in</td><td align="center">❌</td><td align="center">✏️ Book</td></tr>
+              <tr><td><strong>QR Code Check-in</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">✅ Scan/Check-in</td><td align="center">✅ Scan/Check-in</td><td align="center">❌</td><td align="center">👁️ Self QR</td></tr>
+              <tr><td><strong>Consultations & Vitals</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">✍️ Author</td><td align="center">❌</td><td align="center">✏️ Vitals</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
+              <tr><td><strong>Prescriptions</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">✍️ Author</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
+              <tr><td><strong>Invoices & Payments</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Collect</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">👁️ Self Pay</td></tr>
+              <tr><td><strong>Inventory & Stock</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">✏️ Adjust</td><td align="center">❌</td><td align="center">❌</td></tr>
+              <tr><td><strong>Reports & Analytics</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Branch</td><td align="center">👁️ Self</td><td align="center">❌</td><td align="center">❌</td><td align="center">💵 Financial</td><td align="center">❌</td></tr>
+              <tr><td><strong>Audit Logs</strong></td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     `;
+
+    // Attach Toggle for RBAC Card
+    const btnToggle = document.getElementById("btn-toggle-rbac-matrix");
+    const matrixCard = document.getElementById("rbac-matrix-card");
+    const chevron = document.getElementById("rbac-matrix-chevron");
+
+    if (btnToggle && matrixCard) {
+      btnToggle.addEventListener("click", () => {
+        const isHidden = matrixCard.style.display === "none";
+        matrixCard.style.display = isHidden ? "block" : "none";
+        if (chevron) chevron.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)";
+      });
+    }
   }
 
   // ==========================================================================
@@ -179,263 +221,259 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderSwaggerOpblock(ep) {
     const methodLower = ep.method.toLowerCase();
-    const curlSnippet = generateCurlSnippet(ep);
+    const isOpen = state.expandedEndpoints.has(ep.id);
+    const lockIcon = ep.roles && !ep.roles.includes("public") ? '<i class="fas fa-lock opblock-lock-icon" title="Protected Route"></i>' : '';
+
+    const rolesBadges = ep.roles ? ep.roles.map(r => `<span style="font-size:11px; background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:10px; font-weight:600; margin-left:6px;">${r}</span>`).join('') : '';
 
     return `
-      <div class="opblock opblock-${methodLower}" id="opblock-${ep.id}">
-        <!-- Summary Bar -->
-        <div class="opblock-summary">
+      <div class="opblock opblock-${methodLower} ${isOpen ? 'is-open' : ''}" id="opblock-${ep.id}">
+        <div class="opblock-summary" onclick="window.toggleOpblock('${ep.id}')">
           <span class="opblock-summary-method">${ep.method}</span>
-          <span class="opblock-summary-path">
-            <span>${ep.path}</span>
-          </span>
-          <span class="opblock-summary-description">${ep.title}</span>
-          <i class="fas fa-lock opblock-lock-icon" title="Requires JWT Bearer Token"></i>
+          <span class="opblock-summary-path">${lockIcon} ${ep.path}</span>
+          <span class="opblock-summary-description">${ep.title} — ${ep.description} ${rolesBadges}</span>
         </div>
 
-        <!-- Expanded Body Pane -->
         <div class="opblock-body">
-          <p style="font-size: 14px; color: #3b4151; margin-bottom: 15px;">${ep.description}</p>
-          <p style="font-size: 12px; color: #777; margin-bottom: 15px;"><strong>Permitted Roles:</strong> ${ep.roles.join(', ')}</p>
-
-          <!-- Parameters Header -->
           <div class="opblock-section-header">
-            <span class="opblock-title">Parameters</span>
-            <button class="btn-try-out" data-try-id="${ep.id}">Try it out</button>
+            <span class="opblock-title">Parameters & Request Details</span>
+            <button class="btn-try-out" onclick="window.toggleTryItOut('${ep.id}')">Try it out</button>
           </div>
 
-          ${ep.parameters && ep.parameters.length > 0 ? `
-            <table class="parameters-table">
-              <thead>
-                <tr>
-                  <th style="width: 25%;">Name</th>
-                  <th style="width: 75%;">Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${ep.parameters.map(p => `
-                  <tr>
-                    <td>
-                      <div class="param-name">${p.name}</div>
-                      <div class="param-type">${p.dataType} (${p.type})</div>
-                      ${p.required ? '<div class="param-required">required</div>' : ''}
-                    </td>
-                    <td>
-                      <div>${p.description}</div>
-                      <div style="margin-top: 6px;">
-                        <input type="text" class="swagger-input try-param-input" data-param="${p.name}" placeholder="${p.default || p.name}" style="display:none; max-width: 300px;" />
-                      </div>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          ` : `<p style="font-size: 13px; color: #777; margin-bottom: 15px;">No parameters</p>`}
+          <!-- Roles Info -->
+          <div style="margin-bottom: 15px; font-size: 13px;">
+            <strong>Permitted Roles:</strong> ${rolesBadges || '<span style="color:#777;">Public</span>'}
+          </div>
 
-          ${ep.requestBody ? `
-            <div class="opblock-section-header">
-              <span class="opblock-title">Request body</span>
+          ${renderParametersTable(ep)}
+          ${renderRequestBodySection(ep)}
+          ${renderResponsesSection(ep)}
+
+          <!-- Interactive Console Box -->
+          <div id="try-console-${ep.id}" style="display: none; margin-top: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+            <h5 style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 10px;">
+              <i class="fas fa-terminal" style="color: #3b82f6; margin-right: 6px;"></i> Interactive Console
+            </h5>
+            
+            ${renderTryItOutForm(ep)}
+            
+            <button class="btn-execute-swagger" onclick="window.executeSwaggerCall('${ep.id}')">Execute</button>
+
+            <div id="curl-output-${ep.id}" style="margin-top: 15px; display: none;">
+              <strong style="font-size: 12px; color: #64748b;">Generated cURL Command:</strong>
+              <pre class="microlight" id="curl-text-${ep.id}"></pre>
             </div>
-            <div style="margin-bottom: 15px;">
-              <textarea class="swagger-input try-body-input" style="display:none; min-height: 120px; font-family: var(--font-mono);">${JSON.stringify(ep.requestBody, null, 2)}</textarea>
-              <div class="microlight"><code>${syntaxHighlight(JSON.stringify(ep.requestBody, null, 2))}</code></div>
-            </div>
-          ` : ''}
 
-          <!-- Execute Button Container (Hidden by default until Try It Out clicked) -->
-          <div class="try-execute-container" style="display: none; margin-bottom: 20px;">
-            <button class="btn-execute-swagger" data-exec-id="${ep.id}">Execute</button>
-          </div>
-
-          <!-- cURL Snippet -->
-          <div class="opblock-section-header">
-            <span class="opblock-title">cURL</span>
-          </div>
-          <div class="microlight" style="margin-bottom: 20px;">
-            <code>${escapeHtml(curlSnippet)}</code>
-          </div>
-
-          <!-- Responses Header -->
-          <div class="opblock-section-header">
-            <span class="opblock-title">Responses</span>
-          </div>
-
-          <table class="parameters-table">
-            <thead>
-              <tr>
-                <th style="width: 15%;">Code</th>
-                <th style="width: 85%;">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${ep.responses.map(res => `
-                <tr>
-                  <td style="font-family: var(--font-mono); font-weight: 700; color: ${res.status < 300 ? '#49cc90' : '#f93e3e'};">${res.status}</td>
-                  <td>
-                    <div>${res.description}</div>
-                    ${res.body ? `
-                      <div class="microlight" style="margin-top: 8px;">
-                        <code>${syntaxHighlight(JSON.stringify(res.body, null, 2))}</code>
-                      </div>
-                    ` : ''}
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-
-          <!-- Try Response Output Container -->
-          <div class="try-response-output" id="try-res-${ep.id}" style="display: none; margin-top: 20px;">
-            <div class="opblock-section-header">
-              <span class="opblock-title" style="color: #4990e2;">Server Response</span>
-            </div>
-            <div class="microlight">
-              <div style="color: #49cc90; font-weight: 700; margin-bottom: 8px;">Response Code: 200 OK (Simulated)</div>
-              <code><pre class="try-code-output"></pre></code>
+            <div id="response-output-${ep.id}" style="margin-top: 15px; display: none;">
+              <strong style="font-size: 12px; color: #64748b;">Server Response (Simulated):</strong>
+              <pre class="microlight" id="response-text-${ep.id}"></pre>
             </div>
           </div>
-
         </div>
       </div>
     `;
   }
 
-  // ==========================================================================
-  // Interactivity Handlers
-  // ==========================================================================
+  function renderParametersTable(ep) {
+    if (!ep.parameters || ep.parameters.length === 0) {
+      return `<p style="font-size: 13px; color: #777; margin-bottom: 15px;">No query or path parameters required.</p>`;
+    }
 
-  function attachOpblockAccordion() {
-    document.querySelectorAll(".opblock-summary").forEach((summary) => {
-      summary.addEventListener("click", () => {
-        const opblock = summary.closest(".opblock");
-        opblock.classList.toggle("is-open");
-      });
+    let rows = ep.parameters.map((p) => `
+      <tr>
+        <td>
+          <span class="param-name">${p.name}</span>
+          ${p.required ? '<span class="param-required">* required</span>' : ''}
+        </td>
+        <td>
+          <span class="param-type">${p.dataType} (${p.type})</span>
+        </td>
+        <td style="color: #475569;">
+          ${p.description}
+          ${p.default ? `<br><small style="color:#64748b;">Default: <code>${p.default}</code></small>` : ''}
+        </td>
+      </tr>
+    `).join('');
+
+    return `
+      <table class="parameters-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function renderRequestBodySection(ep) {
+    if (!ep.requestBody) return "";
+
+    return `
+      <div style="margin-bottom: 20px;">
+        <h5 style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">Request Body (JSON)</h5>
+        <pre class="microlight">${JSON.stringify(ep.requestBody, null, 2)}</pre>
+      </div>
+    `;
+  }
+
+  function renderResponsesSection(ep) {
+    if (!ep.responses || ep.responses.length === 0) return "";
+
+    let html = `<h5 style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 10px;">Responses</h5>`;
+
+    ep.responses.forEach((res) => {
+      const statusColor = res.status < 300 ? '#10b981' : '#ef4444';
+      html += `
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 13px; font-weight: 700; color: ${statusColor}; margin-bottom: 4px;">
+            ${res.description}
+          </div>
+          <pre class="microlight">${JSON.stringify(res.body, null, 2)}</pre>
+        </div>
+      `;
     });
 
-    document.querySelectorAll(".tag-header").forEach((header) => {
-      header.addEventListener("click", () => {
-        const section = header.closest(".tag-section");
-        const container = section.querySelector(".tag-endpoints-container");
+    return html;
+  }
+
+  function renderTryItOutForm(ep) {
+    let html = "";
+
+    if (ep.parameters && ep.parameters.length > 0) {
+      html += `<div style="margin-bottom: 12px;"><strong style="font-size: 13px; color: #334155;">Parameters Input:</strong></div>`;
+      ep.parameters.forEach((p) => {
+        html += `
+          <div style="margin-bottom: 10px;">
+            <label style="font-size: 12px; font-weight: 700; color: #475569;">${p.name} (${p.type}):</label>
+            <input type="text" class="swagger-input try-param-input" data-ep="${ep.id}" data-param="${p.name}" data-type="${p.type}" value="${p.default || ''}" placeholder="${p.description}" />
+          </div>
+        `;
+      });
+    }
+
+    if (ep.requestBody) {
+      html += `
+        <div style="margin-bottom: 10px;">
+          <label style="font-size: 12px; font-weight: 700; color: #475569;">Body Payload (JSON):</label>
+          <textarea class="swagger-input try-body-input" data-ep="${ep.id}" rows="5" style="font-family: var(--font-mono);">${JSON.stringify(ep.requestBody, null, 2)}</textarea>
+        </div>
+      `;
+    }
+
+    return html;
+  }
+
+  // Global Handlers
+  window.toggleOpblock = (epId) => {
+    if (state.expandedEndpoints.has(epId)) {
+      state.expandedEndpoints.delete(epId);
+    } else {
+      state.expandedEndpoints.add(epId);
+    }
+    renderEndpoints();
+  };
+
+  window.toggleTryItOut = (epId) => {
+    const tryConsole = document.getElementById(`try-console-${epId}`);
+    if (tryConsole) {
+      const isHidden = tryConsole.style.display === "none";
+      tryConsole.style.display = isHidden ? "block" : "none";
+    }
+  };
+
+  window.executeSwaggerCall = (epId) => {
+    // Find endpoint definition
+    let targetEp = null;
+    data.modules.forEach((mod) => {
+      const found = mod.endpoints.find((e) => e.id === epId);
+      if (found) targetEp = found;
+    });
+
+    if (!targetEp) return;
+
+    // Gather params
+    const paramInputs = document.querySelectorAll(`.try-param-input[data-ep="${epId}"]`);
+    let finalPath = targetEp.path;
+    let queryParams = [];
+
+    paramInputs.forEach((inp) => {
+      const name = inp.getAttribute("data-param");
+      const type = inp.getAttribute("data-type");
+      const val = inp.value.trim();
+
+      if (val) {
+        if (type === "path") {
+          finalPath = finalPath.replace(`{${name}}`, val);
+        } else if (type === "query") {
+          queryParams.push(`${name}=${encodeURIComponent(val)}`);
+        }
+      }
+    });
+
+    if (queryParams.length > 0) {
+      finalPath += `?${queryParams.join('&')}`;
+    }
+
+    // Gather Body
+    const bodyInput = document.querySelector(`.try-body-input[data-ep="${epId}"]`);
+    let bodyText = bodyInput ? bodyInput.value.trim() : "";
+
+    // Build cURL
+    let curl = `curl -X ${targetEp.method} "${data.info.baseUrl}${finalPath}" \\\n  -H "Accept: application/json" \\\n  -H "Content-Type: application/json"`;
+    
+    if (state.authToken) {
+      curl += ` \\\n  -H "Authorization: ${state.authToken}"`;
+    } else {
+      curl += ` \\\n  -H "Authorization: Bearer sample_access_token_xyz"`;
+    }
+
+    curl += ` \\\n  -H "X-Clinic-Id: ${state.clinicId}"`;
+
+    if (bodyText && (targetEp.method === "POST" || targetEp.method === "PUT" || targetEp.method === "PATCH")) {
+      curl += ` \\\n  -d '${bodyText.replace(/\n/g, '')}'`;
+    }
+
+    // Render Outputs
+    const curlOutput = document.getElementById(`curl-output-${epId}`);
+    const curlText = document.getElementById(`curl-text-${epId}`);
+    const responseOutput = document.getElementById(`response-output-${epId}`);
+    const responseText = document.getElementById(`response-text-${epId}`);
+
+    if (curlOutput && curlText) {
+      curlText.textContent = curl;
+      curlOutput.style.display = "block";
+    }
+
+    if (responseOutput && responseText) {
+      const primaryResponse = targetEp.responses ? targetEp.responses[0].body : { success: true };
+      responseText.textContent = JSON.stringify(primaryResponse, null, 2);
+      responseOutput.style.display = "block";
+    }
+  };
+
+  function attachOpblockAccordion() {
+    // Accordion tags
+    const tagHeaders = document.querySelectorAll(".tag-header");
+    tagHeaders.forEach((hdr) => {
+      hdr.addEventListener("click", () => {
+        const container = hdr.nextElementSibling;
+        const chevron = hdr.querySelector(".tag-chevron");
         if (container) {
           const isHidden = container.style.display === "none";
           container.style.display = isHidden ? "block" : "none";
-          header.querySelector(".tag-chevron").style.transform = isHidden ? "rotate(0deg)" : "rotate(-90deg)";
+          if (chevron) chevron.style.transform = isHidden ? "rotate(0deg)" : "rotate(-90deg)";
         }
       });
     });
   }
 
   function attachTryOutExecutors() {
-    // Toggle Try It Out inputs visibility
-    document.querySelectorAll(".btn-try-out").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const tryId = btn.getAttribute("data-try-id");
-        const opblock = document.getElementById(`opblock-${tryId}`);
-        if (!opblock) return;
-
-        const isCancel = btn.classList.contains("cancel");
-        if (isCancel) {
-          btn.classList.remove("cancel");
-          btn.innerText = "Try it out";
-          btn.style.borderColor = "#4990e2";
-          btn.style.color = "#4990e2";
-
-          opblock.querySelectorAll(".try-param-input").forEach(i => i.style.display = "none");
-          opblock.querySelectorAll(".try-body-input").forEach(i => i.style.display = "none");
-          opblock.querySelectorAll(".try-execute-container").forEach(c => c.style.display = "none");
-        } else {
-          btn.classList.add("cancel");
-          btn.innerText = "Cancel";
-          btn.style.borderColor = "#f93e3e";
-          btn.style.color = "#f93e3e";
-
-          opblock.querySelectorAll(".try-param-input").forEach(i => i.style.display = "block");
-          opblock.querySelectorAll(".try-body-input").forEach(i => i.style.display = "block");
-          opblock.querySelectorAll(".try-execute-container").forEach(c => c.style.display = "block");
-        }
-      });
-    });
-
-    // Execute Request Simulation
-    document.querySelectorAll(".btn-execute-swagger").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const execId = btn.getAttribute("data-exec-id");
-        const opblock = document.getElementById(`opblock-${execId}`);
-        if (!opblock) return;
-
-        let foundEp = null;
-        for (const mod of data.modules) {
-          const match = mod.endpoints.find(e => e.id === execId);
-          if (match) {
-            foundEp = match;
-            break;
-          }
-        }
-
-        if (!foundEp) return;
-
-        const resPane = opblock.querySelector(`#try-res-${execId}`);
-        const codeOutput = resPane.querySelector(".try-code-output");
-
-        resPane.style.display = "block";
-        const mockResponse = foundEp.responses && foundEp.responses[0] ? foundEp.responses[0].body : { success: true };
-        codeOutput.innerHTML = syntaxHighlight(JSON.stringify(mockResponse, null, 2));
-      });
-    });
-  }
-
-  // ==========================================================================
-  // Helper Functions
-  // ==========================================================================
-
-  function generateCurlSnippet(ep) {
-    let url = `${state.baseUrl}${ep.path}`;
-    let headers = [
-      `-H "Authorization: Bearer ${state.authToken || '[ACCESS_TOKEN]'}"`,
-      `-H "Content-Type: application/json"`,
-      `-H "X-Clinic-Id: ${state.clinicId || 'cli_a1b2c3'}"`
-    ];
-
-    let curl = `curl -X ${ep.method} "${url}" \\\n  ` + headers.join(" \\\n  ");
-
-    if (ep.requestBody) {
-      curl += ` \\\n  -d '${JSON.stringify(ep.requestBody)}'`;
-    }
-
-    return curl;
-  }
-
-  function escapeHtml(str) {
-    if (!str) return "";
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
-  function syntaxHighlight(jsonStr) {
-    if (!jsonStr) return "";
-    jsonStr = escapeHtml(jsonStr);
-    return jsonStr.replace(
-      /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
-      function (match) {
-        let cls = "color: #905;"; // string/key default
-        if (/^"/.test(match)) {
-          if (/:$/.test(match)) {
-            cls = "color: #31708f; font-weight: 700;"; // key
-          } else {
-            cls = "color: #036a00;"; // string
-          }
-        } else if (/true|false/.test(match)) {
-          cls = "color: #b05a00;"; // boolean
-        } else if (/null/.test(match)) {
-          cls = "color: #808080;"; // null
-        }
-        return `<span style="${cls}">${match}</span>`;
-      }
-    );
+    // Attached globally via window handlers
   }
 });
