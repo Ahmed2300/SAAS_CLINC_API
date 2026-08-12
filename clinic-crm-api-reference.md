@@ -93,8 +93,27 @@ JWT bearer tokens. `access_token` is short-lived (15 minutes); `refresh_token` i
 | `accountant` | Invoices, payments, financial reports (no clinical data) |
 | `patient` | Own profile, own appointments, own invoices, own prescriptions (read-only + booking) |
 
+### Detailed Permission Matrix Across Modules
 
-Each endpoint below lists the roles permitted to call it under **Roles**.
+| Module / Feature | `super_admin` | `support_admin` | `clinic_manager` | `doctor` | `receptionist` | `nurse` | `accountant` | `patient` |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Platform Settings & DB** | ✅ Full | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Manage Clinics & Branches** | ✅ Full | ✅ Onboard | ⚠️ Own Branch | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Manage Users & Staff** | ✅ Full | ✅ Setup | ✅ Clinic Staff | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Roles & Permissions** | ✅ Full | 👁️ Read | 👁️ Read | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Patient Profiles** | ✅ Full | ✅ Support | ✅ Full | 👁️ Read/Edit | ✅ Full | 👁️ Read | ❌ | 👁️ Self |
+| **Doctors & Schedules** | ✅ Full | ✅ Setup | ✅ Full | ✏️ Own Schedule | 👁️ Read | 👁️ Read | ❌ | 👁️ Read |
+| **Appointments & Booking** | ✅ Full | ✅ Support | ✅ Full | 👁️ Own | ✅ Full | ✅ Check-in | ❌ | ✏️ Self Book |
+| **QR Code Check-in** | ✅ Full | ✅ Support | ✅ Full | 👁️ Read | ✅ Scan/Check-in | ✅ Scan/Check-in | ❌ | 👁️ Self QR |
+| **Consultations & Vitals** | ✅ Full | ❌ | 👁️ Read | ✍️ Author | ❌ | ✏️ Vitals Only | ❌ | 👁️ Self |
+| **Prescriptions** | ✅ Full | ❌ | 👁️ Read | ✍️ Create/Edit | ❌ | 👁️ Read | ❌ | 👁️ Self |
+| **Invoices & Payments** | ✅ Full | ❌ | ✅ Full | ❌ | ✅ Create/Collect | ❌ | ✅ Full | 👁️ Self Pay |
+| **Inventory & Stock** | ✅ Full | ❌ | ✅ Full | 👁️ Read | ❌ | ✏️ Adjust Stock | ❌ | ❌ |
+| **Reports & Analytics** | ✅ Full | ❌ | ✅ Branch | 👁️ Self Perf | ❌ | ❌ | 💵 Financial | ❌ |
+| **Audit Logs** | ✅ Full | 👁️ Read | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+Each endpoint below explicitly lists the exact roles permitted to call it under **Roles**.
+
 
 ---
 
