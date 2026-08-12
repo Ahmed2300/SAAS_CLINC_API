@@ -1026,6 +1026,60 @@ Response `200 OK`:
 
 ---
 
+#### `GET /appointments/{appointmentId}/qr-code`
+**Roles:** `admin`, `clinic_manager`, `receptionist`, `doctor`, `patient` (self)
+
+Generates or retrieves a secure QR Code payload and image URL for an appointment. The patient receives this QR code to present upon arrival.
+
+Response `200 OK`:
+```json
+{
+  "success": true,
+  "data": {
+    "appointment_id": "apt_5e2b18",
+    "patient_name": "Laila Ibrahim",
+    "qr_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.qr_apt_5e2b18_token_sample",
+    "qr_image_url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAAD...",
+    "expires_at": "2026-08-15T23:59:59Z"
+  }
+}
+```
+Errors: `404 APPOINTMENT_NOT_FOUND`
+
+---
+
+#### `POST /appointments/check-in/scan-qr`
+**Roles:** `admin`, `clinic_manager`, `receptionist`, `nurse`
+
+Scans and validates a patient's QR code via reception/kiosk camera. Automatically updates appointment status to `checked_in` and logs arrival time without manual dashboard lookup.
+
+Request:
+```json
+{
+  "qr_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.qr_apt_5e2b18_token_sample"
+}
+```
+
+Response `200 OK`:
+```json
+{
+  "success": true,
+  "data": {
+    "appointment_id": "apt_5e2b18",
+    "patient_id": "pat_7c3f21",
+    "patient_name": "Laila Ibrahim",
+    "doctor_name": "Dr. Ahmed Hassan",
+    "status": "checked_in",
+    "checked_in_at": "2026-08-15T11:24:12Z",
+    "message": "Patient Laila Ibrahim successfully checked in automatically via QR scan."
+  }
+}
+```
+Errors: `400 INVALID_OR_EXPIRED_QR_TOKEN`, `409 APPOINTMENT_ALREADY_CHECKED_IN`
+
+
+---
+
 ## 12. Consultations (Medical Records)
 
 #### `GET /consultations`

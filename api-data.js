@@ -1669,9 +1669,82 @@ const API_DATA = {
               }
             }
           ]
+        },
+        {
+          id: "appointments-qrcode-get",
+          method: "GET",
+          path: "/appointments/{appointmentId}/qr-code",
+          title: "Get appointment QR code for patient",
+          roles: ["admin", "clinic_manager", "receptionist", "doctor", "patient"],
+          description: "Generates or retrieves a secure QR Code payload and renderable QR image URL for a booked appointment. The patient receives this QR code to present upon arrival at the clinic.",
+          parameters: [
+            { name: "appointmentId", type: "path", dataType: "string", required: true, description: "Target appointment ID (e.g. apt_5e2b18)" }
+          ],
+          responses: [
+            {
+              status: 200,
+              description: "200 OK — QR Code payload & image URL",
+              body: {
+                success: true,
+                data: {
+                  appointment_id: "apt_5e2b18",
+                  patient_name: "Laila Ibrahim",
+                  qr_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.qr_apt_5e2b18_token_sample",
+                  qr_image_url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAAD...",
+                  expires_at: "2026-08-15T23:59:59Z"
+                }
+              }
+            },
+            {
+              status: 404,
+              description: "404 Not Found — Appointment not found",
+              body: { success: false, error: { code: "RESOURCE_NOT_FOUND", message: "Appointment with id 'apt_5e2b18' was not found.", details: null } }
+            }
+          ]
+        },
+        {
+          id: "appointments-scan-qr",
+          method: "POST",
+          path: "/appointments/check-in/scan-qr",
+          title: "Scan patient QR code & automatic check-in",
+          roles: ["admin", "clinic_manager", "receptionist", "nurse"],
+          description: "Scans and validates a patient's QR code via reception desk or kiosk camera scanner. Automatically marks the appointment as checked_in and logs arrival time without requiring manual dashboard lookup.",
+          parameters: [],
+          requestBody: {
+            qr_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.qr_apt_5e2b18_token_sample"
+          },
+          responses: [
+            {
+              status: 200,
+              description: "200 OK — Automatically checked in",
+              body: {
+                success: true,
+                data: {
+                  appointment_id: "apt_5e2b18",
+                  patient_id: "pat_7c3f21",
+                  patient_name: "Laila Ibrahim",
+                  doctor_name: "Dr. Ahmed Hassan",
+                  status: "checked_in",
+                  checked_in_at: "2026-08-15T11:24:12Z",
+                  message: "Patient Laila Ibrahim successfully checked in automatically via QR scan."
+                }
+              }
+            },
+            {
+              status: 400,
+              description: "400 Bad Request — Invalid or expired QR code token",
+              body: { success: false, error: { code: "INVALID_OR_EXPIRED_QR_TOKEN", message: "The scanned QR token is invalid or expired.", details: null } }
+            },
+            {
+              status: 409,
+              description: "409 Conflict — Patient already checked in",
+              body: { success: false, error: { code: "APPOINTMENT_ALREADY_CHECKED_IN", message: "Patient has already checked in for this appointment.", details: null } }
+            }
+          ]
         }
       ]
     },
+
 
     {
       id: "consultations",
