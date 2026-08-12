@@ -304,6 +304,51 @@ body {
 }
 
 /* ==========================================================================
+   Permission Matrix Professional Status Badges (Icons, No Emojis)
+   ========================================================================== */
+.badge-permit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.badge-full {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #10b981;
+}
+
+.badge-read {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #61affe;
+}
+
+.badge-edit {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #f59e0b;
+}
+
+.badge-warn {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fb923c;
+}
+
+.badge-none {
+  background: #fef2f2;
+  color: #ef4444;
+  border: 1px solid #fca5a5;
+  padding: 4px 8px;
+}
+
+/* ==========================================================================
    Method Quick Filter Bar
    ========================================================================== */
 .swagger-filter-bar {

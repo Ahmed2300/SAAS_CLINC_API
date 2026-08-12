@@ -111,7 +111,7 @@
           <h4 style="font-size: 17px; font-weight: 800; margin-bottom: 6px; color: #0f172a;">Detailed RBAC Permission Matrix Across Modules</h4>
           <p style="font-size: 13.5px; color: #64748b; margin-bottom: 18px;">System-wide role permissions breakdown mapping super_admin, support_admin, clinic managers, medical practitioners, and patients.</p>
 
-          <table class="parameters-table" style="min-width: 900px; width: 100%;">
+          <table class="parameters-table" style="min-width: 960px; width: 100%;">
             <thead>
               <tr style="background: #f8fafc;">
                 <th style="width: 22%; padding: 12px 10px;">Module / Feature</th>
@@ -126,20 +126,160 @@
               </tr>
             </thead>
             <tbody>
-              <tr><td style="padding: 10px;"><strong>Platform Settings & DB</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
-              <tr><td style="padding: 10px;"><strong>Manage Clinics & Branches</strong></td><td align="center">✅ Full</td><td align="center">✅ Onboard</td><td align="center">⚠️ Branch</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
-              <tr><td style="padding: 10px;"><strong>Manage Users & Staff</strong></td><td align="center">✅ Full</td><td align="center">✅ Setup</td><td align="center">✅ Staff</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
-              <tr><td style="padding: 10px;"><strong>Roles & Permissions</strong></td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
-              <tr><td style="padding: 10px;"><strong>Patient Profiles</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Read/Edit</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
-              <tr><td style="padding: 10px;"><strong>Doctors & Schedules</strong></td><td align="center">✅ Full</td><td align="center">✅ Setup</td><td align="center">✅ Full</td><td align="center">✏️ Schedule</td><td align="center">👁️ Read</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Read</td></tr>
-              <tr><td style="padding: 10px;"><strong>Appointments & Booking</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Own</td><td align="center">✅ Full</td><td align="center">✅ Check-in</td><td align="center">❌</td><td align="center">✏️ Book</td></tr>
-              <tr><td style="padding: 10px;"><strong>QR Code Check-in</strong></td><td align="center">✅ Full</td><td align="center">✅ Support</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">✅ Scan/Check-in</td><td align="center">✅ Scan/Check-in</td><td align="center">❌</td><td align="center">👁️ Self QR</td></tr>
-              <tr><td style="padding: 10px;"><strong>Consultations & Vitals</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">✍️ Author</td><td align="center">❌</td><td align="center">✏️ Vitals</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
-              <tr><td style="padding: 10px;"><strong>Prescriptions</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">✍️ Author</td><td align="center">❌</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">👁️ Self</td></tr>
-              <tr><td style="padding: 10px;"><strong>Invoices & Payments</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Collect</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">👁️ Self Pay</td></tr>
-              <tr><td style="padding: 10px;"><strong>Inventory & Stock</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">✏️ Adjust</td><td align="center">❌</td><td align="center">❌</td></tr>
-              <tr><td style="padding: 10px;"><strong>Reports & Analytics</strong></td><td align="center">✅ Full</td><td align="center">❌</td><td align="center">✅ Branch</td><td align="center">👁️ Self</td><td align="center">❌</td><td align="center">❌</td><td align="center">💵 Financial</td><td align="center">❌</td></tr>
-              <tr><td style="padding: 10px;"><strong>Audit Logs</strong></td><td align="center">✅ Full</td><td align="center">👁️ Read</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td><td align="center">❌</td></tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Platform Settings & DB</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Manage Clinics & Branches</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Onboard</span></td>
+                <td align="center"><span class="badge-permit badge-warn"><i class="fas fa-building"></i> Branch</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Manage Users & Staff</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Setup</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Staff</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Roles & Permissions</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Patient Profiles</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Support</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read/Edit</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-user"></i> Self</span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Doctors & Schedules</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Setup</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-edit"><i class="fas fa-pen"></i> Schedule</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Appointments & Booking</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Support</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-user-clock"></i> Own</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Check-in</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-edit"><i class="fas fa-calendar-plus"></i> Book</span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>QR Code Check-in</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Support</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-qrcode"></i> Scan/Check-in</span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-qrcode"></i> Scan/Check-in</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-qrcode"></i> Self QR</span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Consultations & Vitals</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+                <td align="center"><span class="badge-permit badge-edit"><i class="fas fa-file-signature"></i> Author</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-edit"><i class="fas fa-heartbeat"></i> Vitals</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-user"></i> Self</span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Prescriptions</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+                <td align="center"><span class="badge-permit badge-edit"><i class="fas fa-file-signature"></i> Author</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-user"></i> Self</span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Invoices & Payments</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-hand-holding-usd"></i> Collect</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-credit-card"></i> Self Pay</span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Inventory & Stock</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-edit"><i class="fas fa-boxes"></i> Adjust</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Reports & Analytics</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-warn"><i class="fas fa-building"></i> Branch</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-user"></i> Self</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-file-invoice-dollar"></i> Financial</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 10px;"><strong>Audit Logs</strong></td>
+                <td align="center"><span class="badge-permit badge-full"><i class="fas fa-check-circle"></i> Full</span></td>
+                <td align="center"><span class="badge-permit badge-read"><i class="fas fa-eye"></i> Read</span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+                <td align="center"><span class="badge-permit badge-none"><i class="fas fa-times-circle"></i></span></td>
+              </tr>
             </tbody>
           </table>
         </div>
