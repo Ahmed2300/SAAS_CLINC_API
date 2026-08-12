@@ -84,13 +84,15 @@ JWT bearer tokens. `access_token` is short-lived (15 minutes); `refresh_token` i
 ### Roles
 | Role | Scope |
 |---|---|
-| `admin` | Full access across all clinics and modules |
-| `clinic_manager` | Full access within their assigned clinic(s) |
+| `super_admin` | DEVesters platform owner. Full root access across all clinics, platform billing, global settings & DB management |
+| `support_admin` | DEVesters technical support team. Onboards clinics, sets up staff/secretaries & provides technical help without root financial keys |
+| `admin` / `clinic_manager` | Full access within their assigned clinic branch(es) |
 | `doctor` | Own schedule, assigned appointments, consultations, prescriptions they authored |
 | `nurse` | Patient vitals, appointment check-in, read-only medical records |
 | `receptionist` | Patients, appointments, check-in, invoice creation |
 | `accountant` | Invoices, payments, financial reports (no clinical data) |
 | `patient` | Own profile, own appointments, own invoices, own prescriptions (read-only + booking) |
+
 
 Each endpoint below lists the roles permitted to call it under **Roles**.
 

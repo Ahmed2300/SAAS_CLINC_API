@@ -681,8 +681,11 @@ const API_DATA = {
               body: {
                 success: true,
                 data: [
+                  { id: "role_super_admin", name: "super_admin", description: "DEVesters Platform Owner — Full root access across all clinics and system configuration" },
+                  { id: "role_support_admin", name: "support_admin", description: "DEVesters Support Agent — Onboards clinics, configures staff & secretaries without root financial keys" },
+                  { id: "role_clinic_manager", name: "clinic_manager", description: "Clinic Branch Manager — Full administrative access within assigned branch" },
                   { id: "role_doctor", name: "doctor", description: "Clinical staff with prescribing rights" },
-                  { id: "role_receptionist", name: "receptionist", description: "Front-desk operations" }
+                  { id: "role_receptionist", name: "receptionist", description: "Front-desk operations & check-in" }
                 ]
               }
             }
