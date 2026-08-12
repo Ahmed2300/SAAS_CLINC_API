@@ -771,10 +771,68 @@ Response `200 OK`: array of [Invoice](#3-data-models) objects, paginated.
 
 ---
 
-## 10. Doctors
+## 10. Doctors & Specialties
+
+#### `GET /specialties`
+**Roles:** none (public / all roles)
+
+Returns all medical specialties available in the clinic platform along with active doctor counts. Used for building step-by-step patient booking forms (Step 1: Specialty ➔ Step 2: Doctor ➔ Step 3: Slot).
+
+Query params: `clinic_id` (optional, filter specialties available at a specific branch).
+
+Response `200 OK`:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "spc_derm",
+      "name": "Dermatology",
+      "arabic_name": "الجلدية والتناسلية",
+      "description": "Skin, hair, nail treatments and cosmetic procedures",
+      "active_doctors_count": 5
+    },
+    {
+      "id": "spc_card",
+      "name": "Cardiology",
+      "arabic_name": "أمراض القلب والأوعية الدموية",
+      "description": "Heart disease diagnosis and cardiovascular care",
+      "active_doctors_count": 3
+    },
+    {
+      "id": "spc_dent",
+      "name": "Dentistry",
+      "arabic_name": "طب الأسنان",
+      "description": "General dentistry, orthodontics, and oral surgery",
+      "active_doctors_count": 4
+    }
+  ]
+}
+```
+
+---
+
+#### `POST /specialties`
+**Roles:** `admin`
+
+Creates a new medical specialty category.
+
+Request:
+```json
+{
+  "name": "Neurology",
+  "arabic_name": "أمراض المخ والأعصاب",
+  "description": "Brain, spinal cord, and nervous system disorders"
+}
+```
+Response `201 Created`: created specialty object.
+Errors: `409 SPECIALTY_ALREADY_EXISTS`, `422 VALIDATION_ERROR`
+
+---
 
 #### `GET /doctors`
 **Roles:** all authenticated roles
+
 
 Query params: `specialty`, `clinic_id`, `status`.
 

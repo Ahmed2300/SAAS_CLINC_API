@@ -1189,10 +1189,88 @@ const API_DATA = {
 
     {
       id: "doctors",
-      title: "Doctors",
+      title: "Doctors & Specialties",
       icon: "stethoscope",
-      description: "Doctor profiles, specialties, weekly availability schedules, and appointments",
+      description: "Medical specialties, doctor profiles, weekly availability schedules, and appointments",
       endpoints: [
+        {
+          id: "specialties-list",
+          method: "GET",
+          path: "/specialties",
+          title: "List medical specialties & active doctor counts",
+          roles: ["public"],
+          description: "Returns all medical specialties available in the clinic platform along with active doctor counts. Essential for step-by-step patient booking forms (Step 1: Specialty ➔ Step 2: Doctor ➔ Step 3: Available Slot).",
+          parameters: [
+            { name: "clinic_id", type: "query", dataType: "string", required: false, description: "Filter specialties available at a specific branch clinic ID (e.g. cli_a1b2c3)" }
+          ],
+          responses: [
+            {
+              status: 200,
+              description: "200 OK — Specialties list with doctor counts",
+              body: {
+                success: true,
+                data: [
+                  {
+                    id: "spc_derm",
+                    name: "Dermatology",
+                    arabic_name: "الجلدية والتناسلية",
+                    description: "Skin, hair, nail treatments and cosmetic procedures",
+                    active_doctors_count: 5
+                  },
+                  {
+                    id: "spc_card",
+                    name: "Cardiology",
+                    arabic_name: "أمراض القلب والأوعية الدموية",
+                    description: "Heart disease diagnosis and cardiovascular care",
+                    active_doctors_count: 3
+                  },
+                  {
+                    id: "spc_dent",
+                    name: "Dentistry",
+                    arabic_name: "طب الأسنان",
+                    description: "General dentistry, orthodontics, and oral surgery",
+                    active_doctors_count: 4
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          id: "specialties-create",
+          method: "POST",
+          path: "/specialties",
+          title: "Create new medical specialty",
+          roles: ["admin"],
+          description: "Creates a new medical specialty category in the clinic system.",
+          parameters: [],
+          requestBody: {
+            name: "Neurology",
+            arabic_name: "أمراض المخ والأعصاب",
+            description: "Brain, spinal cord, and nervous system disorders"
+          },
+          responses: [
+            {
+              status: 201,
+              description: "201 Created — Specialty created",
+              body: {
+                success: true,
+                data: {
+                  id: "spc_neuro",
+                  name: "Neurology",
+                  arabic_name: "أمراض المخ والأعصاب",
+                  description: "Brain, spinal cord, and nervous system disorders",
+                  active_doctors_count: 0
+                }
+              }
+            },
+            {
+              status: 409,
+              description: "409 Conflict — Specialty already exists",
+              body: { success: false, error: { code: "SPECIALTY_ALREADY_EXISTS", message: "Specialty with this name already exists.", details: null } }
+            }
+          ]
+        },
         {
           id: "doctors-list",
           method: "GET",
