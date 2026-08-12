@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinic CRM API — Swagger UI (Created by DEVesters)</title>
+  <meta name="description" content="Swagger UI reference documentation for Clinic CRM REST API. Created by DEVesters." />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/webp" href="devesters_icon.webp" />
+  <link rel="shortcut icon" type="image/webp" href="devesters_icon.webp" />
+
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Source+Code+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Swagger UI Light Theme Styles -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Top Dark Swagger Bar with DEVesters Brand Logo -->
+  <header class="swagger-topbar">
+    <a href="#" class="swagger-topbar-brand">
+      <div class="devesters-logo-brand">
+        <img src="devesters_icon.webp" alt="D" class="devesters-d-icon" />
+        <span class="devesters-text">EVesters</span>
+      </div>
+      <span class="swagger-brand-tag">Clinic CRM API Documentation</span>
+    </a>
+
+    <!-- Fast Search Box -->
+    <div class="swagger-search-box">
+      <i class="fas fa-search swagger-search-icon"></i>
+      <input type="text" id="search-input" class="swagger-search-input" placeholder="Filter by endpoint path, method, or tag (e.g. /patients, POST)..." />
+    </div>
+  </header>
+
+  <!-- Schemes & Authorize Control Bar -->
+  <div class="swagger-scheme-container">
+    <div class="schemes-wrapper">
+      <span class="schemes-label">Schemes</span>
+      <select class="schemes-select" id="scheme-selector">
+        <option value="https">HTTPS</option>
+        <option value="http">HTTP</option>
+      </select>
+    </div>
+
+    <button class="btn-swagger-authorize" id="btn-authorize">
+      Authorize <i class="fas fa-lock"></i>
+    </button>
+  </div>
+
+  <!-- Swagger Main Container -->
+  <main class="swagger-ui-container">
+    <!-- Info / Overview Section -->
+    <section class="info-section" id="info-section">
+      <!-- Populated dynamically by app.js -->
+    </section>
+
+    <!-- Method Quick Filter Bar -->
+    <div class="swagger-filter-bar">
+      <span style="font-size: 12px; font-weight: 700; color: #777; margin-right: 6px;">FILTER METHOD:</span>
+      <button class="swagger-filter-pill active" data-method="ALL">ALL</button>
+      <button class="swagger-filter-pill" data-method="GET">GET</button>
+      <button class="swagger-filter-pill" data-method="POST">POST</button>
+      <button class="swagger-filter-pill" data-method="PATCH">PATCH</button>
+      <button class="swagger-filter-pill" data-method="PUT">PUT</button>
+      <button class="swagger-filter-pill" data-method="DELETE">DELETE</button>
+    </div>
+
+    <!-- Tags & Endpoints List -->
+    <div id="swagger-endpoints-list">
+      <!-- Populated dynamically by app.js -->
+    </div>
+
+    <!-- DEVesters Signature Footer -->
+    <footer class="devesters-footer">
+      <span>Clinic CRM API Documentation — Created & Maintained by</span>
+      <div class="devesters-logo-brand" style="scale: 0.85;">
+        <img src="devesters_icon.webp" alt="D" class="devesters-d-icon" />
+        <span class="devesters-text" style="color: #1b1b1b;">EVesters</span>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Authorize Modal -->
+  <div class="swagger-modal-overlay" id="auth-modal">
+    <div class="swagger-modal-card">
+      <div class="swagger-modal-header">
+        <h3 class="swagger-modal-title">Available authorizations</h3>
+        <button class="swagger-modal-close" id="btn-close-modal">&times;</button>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <h4 style="font-size: 16px; font-weight: 700; color: #3b4151; margin-bottom: 8px;">bearerAuth (http, Bearer)</h4>
+        <p style="font-size: 13px; color: #777; margin-bottom: 12px;">
+          JWT Bearer token required for protected routes.
+        </p>
+
+        <label style="font-size: 13px; font-weight: 700; color: #3b4151;">Value:</label>
+        <input type="text" class="swagger-input" id="input-auth-token" placeholder="Bearer [ACCESS_TOKEN]" />
+
+        <div style="margin-top: 15px;">
+          <label style="font-size: 13px; font-weight: 700; color: #3b4151;">X-Clinic-Id (Multi-clinic Branch Header):</label>
+          <input type="text" class="swagger-input" id="input-clinic-id" value="cli_a1b2c3" />
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn-swagger-authorize" id="btn-save-auth" style="background-color: #49cc90; color: #fff; border: none; padding: 8px 24px;">
+          Authorize
+        </button>
+        <button class="btn-swagger-authorize" id="btn-close-auth-modal" style="border-color: #777; color: #777;">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Scripts -->
+  <script src="api-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

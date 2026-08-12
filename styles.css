@@ -1,0 +1,648 @@
+/* ==========================================================================
+   Swagger UI Standard Light Theme & Layout + DEVesters Branding
+   Exact visual match for official Swagger UI (Petstore style)
+   ========================================================================= */
+
+:root {
+  --swagger-bg: #fafafa;
+  --swagger-card-bg: #ffffff;
+  --swagger-text: #3b4151;
+  --swagger-text-muted: #777777;
+  --swagger-border: #d9d9d9;
+  
+  /* DEVesters Red Accent Color */
+  --devesters-red: #ff0015;
+
+  /* Official Swagger Method Colors */
+  --swagger-get-border: #61affe;
+  --swagger-get-bg: rgba(97, 175, 254, 0.1);
+  --swagger-get-badge: #61affe;
+
+  --swagger-post-border: #49cc90;
+  --swagger-post-bg: rgba(73, 204, 144, 0.1);
+  --swagger-post-badge: #49cc90;
+
+  --swagger-put-border: #fca130;
+  --swagger-put-bg: rgba(252, 161, 48, 0.1);
+  --swagger-put-badge: #fca130;
+
+  --swagger-patch-border: #50e3c2;
+  --swagger-patch-bg: rgba(80, 227, 194, 0.1);
+  --swagger-patch-badge: #50e3c2;
+
+  --swagger-delete-border: #f93e3e;
+  --swagger-delete-bg: rgba(249, 62, 62, 0.1);
+  --swagger-delete-badge: #f93e3e;
+
+  --font-sans: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Source Code Pro", "Consolas", "Courier New", monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--swagger-bg);
+  color: var(--swagger-text);
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+/* ==========================================================================
+   DEVesters Logo & Brand Styling
+   ========================================================================== */
+.devesters-logo-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.devesters-d-icon {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.devesters-text {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 800;
+  font-size: 24px;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+  margin-left: -2px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.swagger-brand-tag {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--devesters-red);
+  border: 1px solid var(--devesters-red);
+  padding: 3px 12px;
+  border-radius: 12px;
+  margin-left: 12px;
+  box-shadow: 0 2px 6px rgba(255, 0, 21, 0.3);
+}
+
+/* ==========================================================================
+   Swagger Topbar
+   ========================================================================== */
+.swagger-topbar {
+  background-color: #0b0f19;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.swagger-topbar-brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.swagger-search-box {
+  flex: 1;
+  max-width: 500px;
+  margin: 0 20px;
+  position: relative;
+}
+
+.swagger-search-input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  background-color: #1a202c;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+}
+
+.swagger-search-input:focus {
+  border-color: var(--swagger-post-badge);
+}
+
+.swagger-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #888;
+}
+
+/* ==========================================================================
+   Control Bar (Schemes + Authorize)
+   ========================================================================== */
+.swagger-scheme-container {
+  background-color: #ffffff;
+  padding: 16px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto 20px;
+}
+
+.schemes-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.schemes-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--swagger-text);
+  text-transform: uppercase;
+}
+
+.schemes-select {
+  padding: 6px 12px;
+  border: 1px solid var(--swagger-border);
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--swagger-text);
+  cursor: pointer;
+  outline: none;
+}
+
+.btn-swagger-authorize {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: transparent;
+  color: var(--swagger-post-badge);
+  border: 2px solid var(--swagger-post-badge);
+  border-radius: 4px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-swagger-authorize:hover {
+  background-color: var(--swagger-post-badge);
+  color: #ffffff;
+}
+
+.btn-swagger-authorize.authorized {
+  background-color: #4990e2;
+  border-color: #4990e2;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Main Content Layout
+   ========================================================================== */
+.swagger-ui-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+}
+
+/* Overview Info Section */
+.info-section {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--swagger-border);
+}
+
+.info-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--swagger-text);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* DEVesters Red Version Badge */
+.info-version {
+  font-size: 12px;
+  background-color: var(--devesters-red);
+  color: #ffffff;
+  padding: 3px 12px;
+  border-radius: 12px;
+  vertical-align: middle;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(255, 0, 21, 0.35);
+}
+
+.info-description {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--swagger-text);
+}
+
+.created-by-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #f1f5f9;
+  border-left: 4px solid var(--devesters-red);
+  border-radius: 0 4px 4px 0;
+  font-size: 14px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.base-url-bar {
+  margin-top: 15px;
+  background-color: #f7f7f7;
+  padding: 10px 15px;
+  border-radius: 4px;
+  border: 1px solid var(--swagger-border);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #3b4151;
+}
+
+/* ==========================================================================
+   Tag / Category Headers & Endpoint Accordions
+   ========================================================================== */
+.tag-section {
+  margin-bottom: 30px;
+}
+
+.tag-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(59, 65, 81, 0.2);
+  margin-bottom: 15px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tag-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.tag-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--swagger-text);
+}
+
+.tag-description {
+  font-size: 14px;
+  color: var(--swagger-text-muted);
+}
+
+.tag-chevron {
+  font-size: 18px;
+  color: var(--swagger-text);
+  transition: transform 0.2s ease;
+}
+
+/* Endpoint Row Cards */
+.opblock {
+  border-radius: 4px;
+  margin: 0 0 12px 0;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.19);
+  overflow: hidden;
+  background: var(--swagger-card-bg);
+}
+
+/* GET */
+.opblock.opblock-get {
+  border: 1px solid var(--swagger-get-border);
+  background: var(--swagger-get-bg);
+}
+.opblock.opblock-get .opblock-summary {
+  border-color: var(--swagger-get-border);
+}
+.opblock.opblock-get .opblock-summary-method {
+  background: var(--swagger-get-badge);
+}
+
+/* POST */
+.opblock.opblock-post {
+  border: 1px solid var(--swagger-post-border);
+  background: var(--swagger-post-bg);
+}
+.opblock.opblock-post .opblock-summary {
+  border-color: var(--swagger-post-border);
+}
+.opblock.opblock-post .opblock-summary-method {
+  background: var(--swagger-post-badge);
+}
+
+/* PUT */
+.opblock.opblock-put {
+  border: 1px solid var(--swagger-put-border);
+  background: var(--swagger-put-bg);
+}
+.opblock.opblock-put .opblock-summary {
+  border-color: var(--swagger-put-border);
+}
+.opblock.opblock-put .opblock-summary-method {
+  background: var(--swagger-put-badge);
+}
+
+/* PATCH */
+.opblock.opblock-patch {
+  border: 1px solid var(--swagger-patch-border);
+  background: var(--swagger-patch-bg);
+}
+.opblock.opblock-patch .opblock-summary {
+  border-color: var(--swagger-patch-border);
+}
+.opblock.opblock-patch .opblock-summary-method {
+  background: var(--swagger-patch-badge);
+}
+
+/* DELETE */
+.opblock.opblock-delete {
+  border: 1px solid var(--swagger-delete-border);
+  background: var(--swagger-delete-bg);
+}
+.opblock.opblock-delete .opblock-summary {
+  border-color: var(--swagger-delete-border);
+}
+.opblock.opblock-delete .opblock-summary-method {
+  background: var(--swagger-delete-badge);
+}
+
+/* Opblock Summary Bar */
+.opblock-summary {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.opblock-summary-method {
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 80px;
+  padding: 6px 0;
+  text-align: center;
+  border-radius: 3px;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.opblock-summary-path {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--swagger-text);
+  margin-left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.opblock-summary-description {
+  font-size: 13px;
+  color: var(--swagger-text);
+  margin-left: 15px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.opblock-lock-icon {
+  color: #777;
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+/* Expanded Section Inside Endpoint */
+.opblock-body {
+  padding: 20px;
+  background: #ffffff;
+  border-top: 1px solid rgba(59, 65, 81, 0.2);
+  display: none;
+}
+
+.opblock.is-open .opblock-body {
+  display: block;
+}
+
+.opblock-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(59, 65, 81, 0.2);
+}
+
+.opblock-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--swagger-text);
+}
+
+/* Swagger Buttons */
+.btn-try-out {
+  background: transparent;
+  border: 1px solid #4990e2;
+  color: #4990e2;
+  padding: 4px 16px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-try-out:hover {
+  background: #4990e2;
+  color: #ffffff;
+}
+
+.btn-execute-swagger {
+  background: #4990e2;
+  border: 1px solid #4990e2;
+  color: #ffffff;
+  padding: 8px 30px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 15px;
+}
+
+/* Parameters Table */
+.parameters-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.parameters-table th {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--swagger-text);
+  text-align: left;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(59, 65, 81, 0.2);
+}
+
+.parameters-table td {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(59, 65, 81, 0.1);
+  font-size: 14px;
+}
+
+.param-name {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--swagger-text);
+}
+
+.param-type {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--swagger-text-muted);
+}
+
+.param-required {
+  color: #f93e3e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Code Snippet Box (Curl / Response) */
+.microlight {
+  background-color: #292b2c;
+  color: #ffffff;
+  padding: 12px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+/* Modal Dialog */
+.swagger-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.swagger-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.swagger-modal-card {
+  background: #ffffff;
+  border-radius: 4px;
+  width: 100%;
+  max-width: 600px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.swagger-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--swagger-border);
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+.swagger-modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--swagger-text);
+}
+
+.swagger-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #777;
+  cursor: pointer;
+}
+
+.swagger-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--swagger-border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  margin-top: 6px;
+  outline: none;
+}
+
+.swagger-input:focus {
+  border-color: var(--swagger-post-badge);
+}
+
+/* Quick Filter Pills */
+.swagger-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 25px;
+}
+
+.swagger-filter-pill {
+  background: #ffffff;
+  border: 1px solid var(--swagger-border);
+  color: var(--swagger-text);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.swagger-filter-pill.active {
+  background: var(--swagger-text);
+  color: #ffffff;
+  border-color: var(--swagger-text);
+}
+
+/* Footer Styling */
+.devesters-footer {
+  margin-top: 40px;
+  padding: 20px 0;
+  border-top: 1px solid var(--swagger-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--swagger-text-muted);
+}

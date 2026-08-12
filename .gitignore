@@ -1,0 +1,9 @@
+# Node & Environment
+node_modules/
+.env
+.env.local
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
