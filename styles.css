@@ -1,41 +1,52 @@
 /* ==========================================================================
-   Swagger UI Standard Light Theme & Layout + DEVesters Branding
-   Exact visual match for official Swagger UI (Petstore style)
-   ========================================================================= */
+   DEVesters Senior UI/UX Design System — Modern Clean Swagger Portal (2026)
+   Aesthetics: Frosted Glass Controls, Crisp Inter Typography, Elevated Opblocks
+   ========================================================================== */
 
 :root {
-  --swagger-bg: #fafafa;
+  /* Surface & Base Tokens */
+  --swagger-bg: #f8fafc;
   --swagger-card-bg: #ffffff;
-  --swagger-text: #3b4151;
-  --swagger-text-muted: #777777;
-  --swagger-border: #d9d9d9;
+  --swagger-text: #0f172a;
+  --swagger-text-secondary: #475569;
+  --swagger-text-muted: #64748b;
+  --swagger-border: #e2e8f0;
   
   /* DEVesters Red Accent Color */
-  --devesters-red: #ff0015;
+  --devesters-red: #ef4444;
 
-  /* Official Swagger Method Colors */
-  --swagger-get-border: #61affe;
-  --swagger-get-bg: rgba(97, 175, 254, 0.1);
-  --swagger-get-badge: #61affe;
+  /* Modern Method Colors */
+  --method-get-border: #3b82f6;
+  --method-get-bg: #eff6ff;
+  --method-get-badge: #2563eb;
 
-  --swagger-post-border: #49cc90;
-  --swagger-post-bg: rgba(73, 204, 144, 0.1);
-  --swagger-post-badge: #49cc90;
+  --method-post-border: #10b981;
+  --method-post-bg: #ecfdf5;
+  --method-post-badge: #059669;
 
-  --swagger-put-border: #fca130;
-  --swagger-put-bg: rgba(252, 161, 48, 0.1);
-  --swagger-put-badge: #fca130;
+  --method-put-border: #f59e0b;
+  --method-put-bg: #fffbeb;
+  --method-put-badge: #d97706;
 
-  --swagger-patch-border: #50e3c2;
-  --swagger-patch-bg: rgba(80, 227, 194, 0.1);
-  --swagger-patch-badge: #50e3c2;
+  --method-patch-border: #06b6d4;
+  --method-patch-bg: #ecfeff;
+  --method-patch-badge: #0891b2;
 
-  --swagger-delete-border: #f93e3e;
-  --swagger-delete-bg: rgba(249, 62, 62, 0.1);
-  --swagger-delete-badge: #f93e3e;
+  --method-delete-border: #ef4444;
+  --method-delete-bg: #fef2f2;
+  --method-delete-badge: #dc2626;
 
-  --font-sans: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "Source Code Pro", "Consolas", "Courier New", monospace;
+  /* Typography */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+
+  /* Shadows & Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+  --shadow-glass: 0 8px 30px rgba(0, 0, 0, 0.06);
 }
 
 * {
@@ -48,8 +59,9 @@ body {
   font-family: var(--font-sans);
   background-color: var(--swagger-bg);
   color: var(--swagger-text);
-  line-height: 1.5;
-  font-size: 14px;
+  line-height: 1.6;
+  font-size: 14.5px;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ==========================================================================
@@ -64,7 +76,7 @@ body {
 }
 
 .devesters-d-icon {
-  height: 32px;
+  height: 30px;
   width: auto;
   object-fit: contain;
   display: inline-block;
@@ -72,10 +84,10 @@ body {
 }
 
 .devesters-text {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 800;
-  font-size: 24px;
-  color: #ffffff;
+  font-size: 22px;
+  color: #0f172a;
   letter-spacing: -0.5px;
   margin-left: -2px;
   display: inline-block;
@@ -83,27 +95,32 @@ body {
 }
 
 .swagger-brand-tag {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: #ffffff;
   background: var(--devesters-red);
   border: 1px solid var(--devesters-red);
-  padding: 3px 12px;
-  border-radius: 12px;
-  margin-left: 12px;
-  box-shadow: 0 2px 6px rgba(255, 0, 21, 0.3);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-left: 10px;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
 }
 
 /* ==========================================================================
-   Swagger Topbar
+   Frosted Header Bar
    ========================================================================== */
 .swagger-topbar {
-  background-color: #0b0f19;
-  padding: 12px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 12px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--swagger-border);
 }
 
 .swagger-topbar-brand {
@@ -114,46 +131,54 @@ body {
 
 .swagger-search-box {
   flex: 1;
-  max-width: 500px;
-  margin: 0 20px;
+  max-width: 480px;
+  margin: 0 24px;
   position: relative;
 }
 
 .swagger-search-input {
   width: 100%;
-  padding: 8px 12px 8px 36px;
-  background-color: #1a202c;
-  border: 1px solid #334155;
-  border-radius: 4px;
-  color: #fff;
-  font-size: 14px;
+  padding: 9px 14px 9px 38px;
+  background-color: #f1f5f9;
+  border: 1px solid var(--swagger-border);
+  border-radius: var(--radius-md);
+  color: var(--swagger-text);
+  font-size: 13.5px;
   outline: none;
+  transition: all 0.2s ease;
 }
 
 .swagger-search-input:focus {
-  border-color: var(--swagger-post-badge);
+  background-color: #ffffff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 .swagger-search-icon {
   position: absolute;
-  left: 12px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: #888;
+  color: var(--swagger-text-muted);
+  font-size: 13px;
 }
 
 /* ==========================================================================
-   Control Bar (Schemes + Authorize)
+   Control Bar (Floating Frosted Schemes + Authorize)
    ========================================================================== */
 .swagger-scheme-container {
-  background-color: #ffffff;
-  padding: 16px 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--swagger-border);
+  border-radius: var(--radius-lg);
+  padding: 14px 24px;
+  box-shadow: var(--shadow-glass);
   display: flex;
   align-items: center;
   justify-content: space-between;
   max-width: 1200px;
-  margin: 0 auto 20px;
+  margin: 20px auto;
 }
 
 .schemes-wrapper {
@@ -163,19 +188,20 @@ body {
 }
 
 .schemes-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--swagger-text);
+  color: var(--swagger-text-muted);
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .schemes-select {
   padding: 6px 12px;
   border: 1px solid var(--swagger-border);
-  border-radius: 4px;
-  background-color: #fff;
-  font-size: 14px;
-  font-weight: 700;
+  border-radius: var(--radius-sm);
+  background-color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--swagger-text);
   cursor: pointer;
   outline: none;
@@ -185,26 +211,27 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: transparent;
-  color: var(--swagger-post-badge);
-  border: 2px solid var(--swagger-post-badge);
-  border-radius: 4px;
-  padding: 6px 16px;
-  font-size: 14px;
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #10b981;
+  border-radius: var(--radius-md);
+  padding: 8px 18px;
+  font-size: 13.5px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-swagger-authorize:hover {
-  background-color: var(--swagger-post-badge);
+  background-color: #059669;
   color: #ffffff;
 }
 
 .btn-swagger-authorize.authorized {
-  background-color: #4990e2;
-  border-color: #4990e2;
-  color: #ffffff;
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+  color: #2563eb;
 }
 
 /* ==========================================================================
@@ -213,82 +240,111 @@ body {
 .swagger-ui-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px 40px;
+  padding: 0 20px 60px;
 }
 
 /* Overview Info Section */
 .info-section {
-  margin-bottom: 30px;
-  padding-bottom: 20px;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
   border-bottom: 1px solid var(--swagger-border);
 }
 
 .info-title {
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 30px;
+  font-weight: 800;
   color: var(--swagger-text);
   display: flex;
   align-items: center;
   gap: 12px;
+  letter-spacing: -0.5px;
 }
 
-/* DEVesters Red Version Badge */
 .info-version {
   font-size: 12px;
   background-color: var(--devesters-red);
   color: #ffffff;
   padding: 3px 12px;
-  border-radius: 12px;
+  border-radius: 20px;
   vertical-align: middle;
   font-weight: 700;
-  box-shadow: 0 2px 6px rgba(255, 0, 21, 0.35);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
 }
 
 .info-description {
   margin-top: 10px;
-  font-size: 14px;
-  color: var(--swagger-text);
+  font-size: 14.5px;
+  color: var(--swagger-text-secondary);
 }
 
 .created-by-banner {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 12px;
-  padding: 10px 14px;
+  margin-top: 14px;
+  padding: 8px 16px;
   background: #f1f5f9;
   border-left: 4px solid var(--devesters-red);
-  border-radius: 0 4px 4px 0;
-  font-size: 14px;
-  color: #334155;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 13.5px;
+  color: var(--swagger-text-secondary);
   font-weight: 600;
 }
 
 .base-url-bar {
-  margin-top: 15px;
-  background-color: #f7f7f7;
-  padding: 10px 15px;
-  border-radius: 4px;
+  margin-top: 16px;
+  background-color: #ffffff;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--swagger-border);
   font-family: var(--font-mono);
   font-size: 13px;
-  color: #3b4151;
+  color: var(--swagger-text);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==========================================================================
+   Method Quick Filter Bar
+   ========================================================================== */
+.swagger-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.swagger-filter-pill {
+  background: #ffffff;
+  border: 1px solid var(--swagger-border);
+  color: var(--swagger-text-secondary);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.swagger-filter-pill.active, .swagger-filter-pill:hover {
+  background: var(--swagger-text);
+  color: #ffffff;
+  border-color: var(--swagger-text);
 }
 
 /* ==========================================================================
    Tag / Category Headers & Endpoint Accordions
    ========================================================================== */
 .tag-section {
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .tag-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(59, 65, 81, 0.2);
-  margin-bottom: 15px;
+  padding: 12px 0;
+  border-bottom: 1.5px solid var(--swagger-border);
+  margin-bottom: 16px;
   cursor: pointer;
   user-select: none;
 }
@@ -300,126 +356,119 @@ body {
 }
 
 .tag-name {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 800;
   color: var(--swagger-text);
+  letter-spacing: -0.3px;
 }
 
 .tag-description {
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--swagger-text-muted);
 }
 
 .tag-chevron {
-  font-size: 18px;
-  color: var(--swagger-text);
+  font-size: 16px;
+  color: var(--swagger-text-muted);
   transition: transform 0.2s ease;
 }
 
-/* Endpoint Row Cards */
+/* Endpoint Row Cards (Opblock Cards) */
 .opblock {
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   margin: 0 0 12px 0;
-  box-shadow: 0 0 3px rgba(0, 0, 0, 0.19);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
   background: var(--swagger-card-bg);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* GET */
-.opblock.opblock-get {
-  border: 1px solid var(--swagger-get-border);
-  background: var(--swagger-get-bg);
+.opblock:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
-.opblock.opblock-get .opblock-summary {
-  border-color: var(--swagger-get-border);
+
+/* Method Variants */
+.opblock.opblock-get {
+  border: 1px solid var(--method-get-border);
+  border-left: 5px solid var(--method-get-badge);
+  background: var(--method-get-bg);
 }
 .opblock.opblock-get .opblock-summary-method {
-  background: var(--swagger-get-badge);
+  background: var(--method-get-badge);
 }
 
-/* POST */
 .opblock.opblock-post {
-  border: 1px solid var(--swagger-post-border);
-  background: var(--swagger-post-bg);
-}
-.opblock.opblock-post .opblock-summary {
-  border-color: var(--swagger-post-border);
+  border: 1px solid var(--method-post-border);
+  border-left: 5px solid var(--method-post-badge);
+  background: var(--method-post-bg);
 }
 .opblock.opblock-post .opblock-summary-method {
-  background: var(--swagger-post-badge);
+  background: var(--method-post-badge);
 }
 
-/* PUT */
 .opblock.opblock-put {
-  border: 1px solid var(--swagger-put-border);
-  background: var(--swagger-put-bg);
-}
-.opblock.opblock-put .opblock-summary {
-  border-color: var(--swagger-put-border);
+  border: 1px solid var(--method-put-border);
+  border-left: 5px solid var(--method-put-badge);
+  background: var(--method-put-bg);
 }
 .opblock.opblock-put .opblock-summary-method {
-  background: var(--swagger-put-badge);
+  background: var(--method-put-badge);
 }
 
-/* PATCH */
 .opblock.opblock-patch {
-  border: 1px solid var(--swagger-patch-border);
-  background: var(--swagger-patch-bg);
-}
-.opblock.opblock-patch .opblock-summary {
-  border-color: var(--swagger-patch-border);
+  border: 1px solid var(--method-patch-border);
+  border-left: 5px solid var(--method-patch-badge);
+  background: var(--method-patch-bg);
 }
 .opblock.opblock-patch .opblock-summary-method {
-  background: var(--swagger-patch-badge);
+  background: var(--method-patch-badge);
 }
 
-/* DELETE */
 .opblock.opblock-delete {
-  border: 1px solid var(--swagger-delete-border);
-  background: var(--swagger-delete-bg);
-}
-.opblock.opblock-delete .opblock-summary {
-  border-color: var(--swagger-delete-border);
+  border: 1px solid var(--method-delete-border);
+  border-left: 5px solid var(--method-delete-badge);
+  background: var(--method-delete-bg);
 }
 .opblock.opblock-delete .opblock-summary-method {
-  background: var(--swagger-delete-badge);
+  background: var(--method-delete-badge);
 }
 
 /* Opblock Summary Bar */
 .opblock-summary {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
+  padding: 10px 16px;
   cursor: pointer;
 }
 
 .opblock-summary-method {
-  font-size: 14px;
-  font-weight: 700;
-  min-width: 80px;
-  padding: 6px 0;
+  font-size: 12px;
+  font-weight: 800;
+  width: 72px;
+  padding: 5px 0;
   text-align: center;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   color: #ffffff;
   font-family: var(--font-sans);
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+  letter-spacing: 0.05em;
 }
 
 .opblock-summary-path {
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--swagger-text);
-  margin-left: 12px;
+  margin-left: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .opblock-summary-description {
-  font-size: 13px;
-  color: var(--swagger-text);
-  margin-left: 15px;
+  font-size: 13.5px;
+  color: var(--swagger-text-secondary);
+  margin-left: 16px;
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -427,16 +476,16 @@ body {
 }
 
 .opblock-lock-icon {
-  color: #777;
-  font-size: 14px;
-  margin-right: 10px;
+  color: var(--swagger-text-muted);
+  font-size: 13px;
+  margin-right: 8px;
 }
 
-/* Expanded Section Inside Endpoint */
+/* Expanded Body Inside Endpoint */
 .opblock-body {
-  padding: 20px;
+  padding: 24px;
   background: #ffffff;
-  border-top: 1px solid rgba(59, 65, 81, 0.2);
+  border-top: 1px solid var(--swagger-border);
   display: none;
 }
 
@@ -448,9 +497,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(59, 65, 81, 0.2);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--swagger-border);
 }
 
 .opblock-title {
@@ -459,33 +508,40 @@ body {
   color: var(--swagger-text);
 }
 
-/* Swagger Buttons */
+/* Buttons */
 .btn-try-out {
-  background: transparent;
-  border: 1px solid #4990e2;
-  color: #4990e2;
-  padding: 4px 16px;
-  border-radius: 4px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+  padding: 5px 16px;
+  border-radius: 20px;
   font-weight: 700;
   font-size: 12px;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .btn-try-out:hover {
-  background: #4990e2;
+  background: #2563eb;
   color: #ffffff;
+  border-color: #2563eb;
 }
 
 .btn-execute-swagger {
-  background: #4990e2;
-  border: 1px solid #4990e2;
+  background: #2563eb;
+  border: 1px solid #2563eb;
   color: #ffffff;
-  padding: 8px 30px;
-  border-radius: 4px;
+  padding: 9px 32px;
+  border-radius: var(--radius-sm);
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
-  margin-top: 15px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-execute-swagger:hover {
+  background: #1d4ed8;
 }
 
 /* Parameters Table */
@@ -498,16 +554,18 @@ body {
 .parameters-table th {
   font-size: 12px;
   font-weight: 700;
-  color: var(--swagger-text);
+  color: var(--swagger-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   text-align: left;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(59, 65, 81, 0.2);
+  padding: 10px 0;
+  border-bottom: 1.5px solid var(--swagger-border);
 }
 
 .parameters-table td {
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(59, 65, 81, 0.1);
-  font-size: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--swagger-border);
+  font-size: 13.5px;
 }
 
 .param-name {
@@ -523,31 +581,51 @@ body {
 }
 
 .param-required {
-  color: #f93e3e;
+  color: var(--devesters-red);
   font-size: 11px;
   font-weight: 700;
 }
 
-/* Code Snippet Box (Curl / Response) */
+/* Inputs */
+.swagger-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  margin-top: 6px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.swagger-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Dark Code Snippet Containers */
 .microlight {
-  background-color: #292b2c;
-  color: #ffffff;
-  padding: 12px;
-  border-radius: 4px;
+  background-color: #0f172a;
+  color: #f8fafc;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
   font-family: var(--font-mono);
   font-size: 13px;
   overflow-x: auto;
   margin-top: 10px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Modal Dialog */
+/* Authorize Modal Dialog */
 .swagger-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -564,11 +642,11 @@ body {
 
 .swagger-modal-card {
   background: #ffffff;
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   width: 100%;
-  max-width: 600px;
-  padding: 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  max-width: 580px;
+  padding: 28px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
 .swagger-modal-header {
@@ -576,73 +654,33 @@ body {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--swagger-border);
-  padding-bottom: 15px;
+  padding-bottom: 14px;
   margin-bottom: 20px;
 }
 
 .swagger-modal-title {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
   color: var(--swagger-text);
 }
 
 .swagger-modal-close {
   background: none;
   border: none;
-  font-size: 24px;
-  color: #777;
+  font-size: 22px;
+  color: var(--swagger-text-muted);
   cursor: pointer;
-}
-
-.swagger-input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--swagger-border);
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  margin-top: 6px;
-  outline: none;
-}
-
-.swagger-input:focus {
-  border-color: var(--swagger-post-badge);
-}
-
-/* Quick Filter Pills */
-.swagger-filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 25px;
-}
-
-.swagger-filter-pill {
-  background: #ffffff;
-  border: 1px solid var(--swagger-border);
-  color: var(--swagger-text);
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.swagger-filter-pill.active {
-  background: var(--swagger-text);
-  color: #ffffff;
-  border-color: var(--swagger-text);
 }
 
 /* Footer Styling */
 .devesters-footer {
-  margin-top: 40px;
-  padding: 20px 0;
+  margin-top: 50px;
+  padding: 24px 0;
   border-top: 1px solid var(--swagger-border);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--swagger-text-muted);
 }
