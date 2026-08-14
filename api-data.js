@@ -756,17 +756,17 @@ const API_DATA = {
 
     {
       id: "clinics",
-      title: "Clinics (Multi-Branch & Central Multi-Tenancy)",
+      title: "Clinics (Multi-Branch)",
       icon: "building",
-      description: "Manage multi-tenant clinic onboarding, custom admin accounts, subscription plans, and central dashboard metrics",
+      description: "Manage multi-branch medical center locations, timezone settings, and status",
       endpoints: [
         {
           id: "clinics-list",
           method: "GET",
           path: "/clinics",
-          title: "List clinic tenants & central statistics",
-          roles: ["super_admin", "support_admin", "clinic_manager"],
-          description: "Retrieves list of clinic tenants augmented with subscription plan tiers, custom admin details, active doctor counts, and branch counts for central platform dashboard rendering.",
+          title: "List tenant clinics",
+          roles: ["admin", "clinic_manager"],
+          description: "Retrieves list of tenant clinics including subscription plan details, custom admin contact, and live metrics (doctors_count, branches_count).",
           parameters: [
             { name: "page", type: "query", dataType: "integer", required: false, default: "1", description: "Page number" },
             { name: "limit", type: "query", dataType: "integer", required: false, default: "20", description: "Items per page" }
@@ -774,20 +774,24 @@ const API_DATA = {
           responses: [
             {
               status: 200,
-              description: "200 OK — Clinics list with plan & stats",
+              description: "200 OK — Tenant clinics list with plan and metrics",
               body: {
                 success: true,
                 data: [
                   {
                     id: "cli_a1b2c3",
-                    tenant_slug": "el-nokhba",
-                    domain": "el-nokhba.localhost",
-                    name: "El Nokhba Medical Center",
-                    plan": "professional",
+                    name: "Devesters Medical Center — Mansoura",
+                    domain: "devesters-mansoura",
+                    subdomain: "devesters-mansoura.localhost",
+                    address: "12 El-Gomhoria St, Mansoura",
+                    phone: "+205023456789",
+                    timezone: "Africa/Cairo",
                     status: "active",
+                    plan: "Professional",
                     subscription_expires_at: "2027-08-14T23:59:59Z",
-                    admin_name: "Dr. Hassan El Nokhba",
-                    admin_email: "admin@elnokhba.com",
+                    admin_name: "Dr. Ahmed Hassan",
+                    admin_email: "admin@clinic.com",
+                    admin_phone: "+201012345678",
                     doctors_count: 8,
                     branches_count: 2,
                     created_at: "2026-01-15T10:00:00Z"
@@ -802,51 +806,48 @@ const API_DATA = {
           id: "clinics-create",
           method: "POST",
           path: "/clinics",
-          title: "Provision new clinic tenant & custom admin onboarding",
-          roles: ["super_admin", "support_admin"],
-          description: "Provisions a new clinic tenant on the platform. The backend creates an isolated database, executes migrations and Spatie RBAC seeders, and fires the TenantCreated event to generate the custom admin user (admin_name, admin_email, admin_phone, admin_password) instead of static fallback credentials.",
+          title: "Create & onboard tenant clinic",
+          roles: ["admin"],
+          description: "Registers a new tenant clinic, provisions isolated tenant DB migrations/seeders automatically, saves plan limits, and sets up custom admin user credentials (TenantCreated Event).",
           parameters: [],
           requestBody: {
-            id: "el-nokhba",
-            domain: "el-nokhba.localhost",
-            name: "El Nokhba Medical Center",
-            status: "active",
-            plan: "professional",
+            name: "El-Nokhba Specialized Clinic",
+            domain: "el-nokhba",
+            subdomain: "el-nokhba.localhost",
+            address: "5 Nile Corniche, Mansoura",
+            phone: "+201012345678",
+            timezone: "Africa/Cairo",
+            plan: "Professional",
             subscription_expires_at: "2027-08-14T23:59:59Z",
-            admin_name: "Dr. Hassan El Nokhba",
-            admin_email: "admin@elnokhba.com",
+            admin_name: "Dr. Ahmed Hassan",
+            admin_email: "admin@el-nokhba.com",
             admin_phone: "+201012345678",
             admin_password: "SecurePassword123!"
           },
           responses: [
             {
               status: 201,
-              description: "201 Created — Tenant provisioned with custom admin",
+              description: "201 Created — Tenant clinic provisioned & admin created",
               body: {
                 success: true,
                 data: {
-                  id: "cli_nokhba",
-                  tenant_slug": "el-nokhba",
-                  domain": "el-nokhba.localhost",
-                  name: "El Nokhba Medical Center",
-                  plan": "professional",
+                  id: "cli_el_nokhba",
+                  name: "El-Nokhba Specialized Clinic",
+                  domain: "el-nokhba",
+                  subdomain: "el-nokhba.localhost",
+                  address: "5 Nile Corniche, Mansoura",
+                  phone: "+201012345678",
+                  timezone: "Africa/Cairo",
                   status: "active",
+                  plan: "Professional",
                   subscription_expires_at: "2027-08-14T23:59:59Z",
-                  admin: {
-                    id: "usr_adm_9912",
-                    name: "Dr. Hassan El Nokhba",
-                    email: "admin@elnokhba.com",
-                    phone: "+201012345678"
-                  },
-                  database_status: "provisioned_and_migrated",
-                  created_at: "2026-08-14T23:28:48Z"
+                  admin_name: "Dr. Ahmed Hassan",
+                  admin_email: "admin@el-nokhba.com",
+                  admin_phone: "+201012345678",
+                  database_name: "tenant_el_nokhba_db",
+                  created_at: "2026-08-14T23:36:00Z"
                 }
               }
-            },
-            {
-              status: 409,
-              description: "409 Conflict — Subdomain already taken",
-              body: { success: false, error: { code: "SUBDOMAIN_ALREADY_EXISTS", message: "The subdomain 'el-nokhba' is already registered.", details: null } }
             }
           ]
         },

@@ -594,12 +594,12 @@ Errors: `400 UNKNOWN_PERMISSION_KEY`, `403 CANNOT_MODIFY_ADMIN_ROLE`
 
 ---
 
-## 8. Clinics (Multi-Branch & Central Multi-Tenancy)
+## 8. Clinics (Multi-Branch)
 
 #### `GET /clinics`
-**Roles:** `super_admin`, `support_admin`; scoped list for others (only clinics they belong to)
+**Roles:** `admin`; scoped list for others (only clinics they belong to)
 
-Returns tenant clinics list augmented with subscription tiers, admin contacts, doctor counts, and sub-branch counts for central platform dashboard rendering.
+Returns all tenant clinics with plan subscription details, custom admin contact, and live metrics (doctors count, branches count).
 
 Response `200 OK`:
 ```json
@@ -608,14 +608,18 @@ Response `200 OK`:
   "data": [
     {
       "id": "cli_a1b2c3",
-      "tenant_slug": "el-nokhba",
-      "domain": "el-nokhba.localhost",
-      "name": "El Nokhba Medical Center",
-      "plan": "professional",
+      "name": "Devesters Medical Center — Mansoura",
+      "domain": "devesters-mansoura",
+      "subdomain": "devesters-mansoura.localhost",
+      "address": "12 El-Gomhoria St, Mansoura",
+      "phone": "+205023456789",
+      "timezone": "Africa/Cairo",
       "status": "active",
+      "plan": "Professional",
       "subscription_expires_at": "2027-08-14T23:59:59Z",
-      "admin_name": "Dr. Hassan El Nokhba",
-      "admin_email": "admin@elnokhba.com",
+      "admin_name": "Dr. Ahmed Hassan",
+      "admin_email": "admin@clinic.com",
+      "admin_phone": "+201012345678",
       "doctors_count": 8,
       "branches_count": 2,
       "created_at": "2026-01-15T10:00:00Z"
@@ -628,21 +632,23 @@ Response `200 OK`:
 ---
 
 #### `POST /clinics`
-**Roles:** `super_admin`, `support_admin`
+**Roles:** `admin`
 
-Provisions a new clinic tenant on the platform. The backend automatically creates an isolated tenant database, runs migrations and Spatie RBAC seeders (`admin`, `doctor`, `receptionist`, etc.), and fires the `TenantCreated` event to dynamically generate the custom clinic admin account (`admin_name`, `admin_email`, `admin_phone`, `admin_password`) instead of static fallback credentials.
+Registers a new tenant clinic, provisions isolated tenant DB migrations/seeders automatically, saves plan limits, and sets up custom admin user credentials (`TenantCreated` Event).
 
 Request:
 ```json
 {
-  "id": "el-nokhba",
-  "domain": "el-nokhba.localhost",
-  "name": "El Nokhba Medical Center",
-  "status": "active",
-  "plan": "professional",
+  "name": "El-Nokhba Specialized Clinic",
+  "domain": "el-nokhba",
+  "subdomain": "el-nokhba.localhost",
+  "address": "5 Nile Corniche, Mansoura",
+  "phone": "+201012345678",
+  "timezone": "Africa/Cairo",
+  "plan": "Professional",
   "subscription_expires_at": "2027-08-14T23:59:59Z",
-  "admin_name": "Dr. Hassan El Nokhba",
-  "admin_email": "admin@elnokhba.com",
+  "admin_name": "Dr. Ahmed Hassan",
+  "admin_email": "admin@el-nokhba.com",
   "admin_phone": "+201012345678",
   "admin_password": "SecurePassword123!"
 }
@@ -652,25 +658,25 @@ Response `201 Created`:
 {
   "success": true,
   "data": {
-    "id": "cli_nokhba",
-    "tenant_slug": "el-nokhba",
-    "domain": "el-nokhba.localhost",
-    "name": "El Nokhba Medical Center",
-    "plan": "professional",
+    "id": "cli_el_nokhba",
+    "name": "El-Nokhba Specialized Clinic",
+    "domain": "el-nokhba",
+    "subdomain": "el-nokhba.localhost",
+    "address": "5 Nile Corniche, Mansoura",
+    "phone": "+201012345678",
+    "timezone": "Africa/Cairo",
     "status": "active",
+    "plan": "Professional",
     "subscription_expires_at": "2027-08-14T23:59:59Z",
-    "admin": {
-      "id": "usr_adm_9912",
-      "name": "Dr. Hassan El Nokhba",
-      "email": "admin@elnokhba.com",
-      "phone": "+201012345678"
-    },
-    "database_status": "provisioned_and_migrated",
-    "created_at": "2026-08-14T23:28:48Z"
+    "admin_name": "Dr. Ahmed Hassan",
+    "admin_email": "admin@el-nokhba.com",
+    "admin_phone": "+201012345678",
+    "database_name": "tenant_el_nokhba_db",
+    "created_at": "2026-08-14T23:36:00Z"
   }
 }
 ```
-Errors: `409 SUBDOMAIN_ALREADY_EXISTS`, `422 VALIDATION_ERROR`
+Errors: `422 VALIDATION_ERROR`
 
 
 ---
