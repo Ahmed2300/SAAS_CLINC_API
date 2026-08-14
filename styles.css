@@ -631,8 +631,8 @@ body {
   font-weight: 700;
 }
 
-/* Inputs */
-.swagger-input {
+/* Inputs & Direction Fixes */
+.swagger-input, .ltr-input, input[type="email"], input[type="password"], input[type="url"] {
   width: 100%;
   padding: 9px 12px;
   border: 1px solid #cbd5e1;
@@ -641,6 +641,8 @@ body {
   font-size: 13.5px;
   margin-top: 6px;
   outline: none;
+  direction: ltr !important;
+  text-align: left !important;
   transition: all 0.2s ease;
 }
 
@@ -648,6 +650,7 @@ body {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
+
 
 /* Dark Code Snippet Containers */
 .microlight {

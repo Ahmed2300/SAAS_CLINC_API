@@ -756,17 +756,17 @@ const API_DATA = {
 
     {
       id: "clinics",
-      title: "Clinics (Multi-Branch)",
+      title: "Clinics (Multi-Branch & Central Multi-Tenancy)",
       icon: "building",
-      description: "Manage multi-branch medical center locations, timezone settings, and status",
+      description: "Manage multi-tenant clinic onboarding, custom admin accounts, subscription plans, and central dashboard metrics",
       endpoints: [
         {
           id: "clinics-list",
           method: "GET",
           path: "/clinics",
-          title: "List clinic branches",
-          roles: ["admin", "clinic_manager"],
-          description: "Retrieves list of clinic branches. Non-admin users see only branches they are assigned to.",
+          title: "List clinic tenants & central statistics",
+          roles: ["super_admin", "support_admin", "clinic_manager"],
+          description: "Retrieves list of clinic tenants augmented with subscription plan tiers, custom admin details, active doctor counts, and branch counts for central platform dashboard rendering.",
           parameters: [
             { name: "page", type: "query", dataType: "integer", required: false, default: "1", description: "Page number" },
             { name: "limit", type: "query", dataType: "integer", required: false, default: "20", description: "Items per page" }
@@ -774,17 +774,23 @@ const API_DATA = {
           responses: [
             {
               status: 200,
-              description: "200 OK — Clinics list",
+              description: "200 OK — Clinics list with plan & stats",
               body: {
                 success: true,
                 data: [
                   {
                     id: "cli_a1b2c3",
-                    name: "Devesters Medical Center — Mansoura",
-                    address: "12 El-Gomhoria St, Mansoura",
-                    phone: "+205023456789",
-                    timezone: "Africa/Cairo",
-                    status: "active"
+                    tenant_slug": "el-nokhba",
+                    domain": "el-nokhba.localhost",
+                    name: "El Nokhba Medical Center",
+                    plan": "professional",
+                    status: "active",
+                    subscription_expires_at: "2027-08-14T23:59:59Z",
+                    admin_name: "Dr. Hassan El Nokhba",
+                    admin_email: "admin@elnokhba.com",
+                    doctors_count: 8,
+                    branches_count: 2,
+                    created_at: "2026-01-15T10:00:00Z"
                   }
                 ],
                 meta: { page: 1, limit: 20, total: 3, total_pages: 1 }
@@ -796,31 +802,51 @@ const API_DATA = {
           id: "clinics-create",
           method: "POST",
           path: "/clinics",
-          title: "Create clinic branch",
-          roles: ["admin"],
-          description: "Registers a new clinic branch location.",
+          title: "Provision new clinic tenant & custom admin onboarding",
+          roles: ["super_admin", "support_admin"],
+          description: "Provisions a new clinic tenant on the platform. The backend creates an isolated database, executes migrations and Spatie RBAC seeders, and fires the TenantCreated event to generate the custom admin user (admin_name, admin_email, admin_phone, admin_password) instead of static fallback credentials.",
           parameters: [],
           requestBody: {
-            name: "Devesters Medical Center — Talkha",
-            address: "5 Nile Corniche, Talkha",
-            phone: "+205019988776",
-            timezone: "Africa/Cairo"
+            id: "el-nokhba",
+            domain: "el-nokhba.localhost",
+            name: "El Nokhba Medical Center",
+            status: "active",
+            plan: "professional",
+            subscription_expires_at: "2027-08-14T23:59:59Z",
+            admin_name: "Dr. Hassan El Nokhba",
+            admin_email: "admin@elnokhba.com",
+            admin_phone: "+201012345678",
+            admin_password: "SecurePassword123!"
           },
           responses: [
             {
               status: 201,
-              description: "201 Created — Branch created",
+              description: "201 Created — Tenant provisioned with custom admin",
               body: {
                 success: true,
                 data: {
-                  id: "cli_e5f6g7",
-                  name: "Devesters Medical Center — Talkha",
-                  address: "5 Nile Corniche, Talkha",
-                  phone: "+205019988776",
-                  timezone: "Africa/Cairo",
-                  status: "active"
+                  id: "cli_nokhba",
+                  tenant_slug": "el-nokhba",
+                  domain": "el-nokhba.localhost",
+                  name: "El Nokhba Medical Center",
+                  plan": "professional",
+                  status: "active",
+                  subscription_expires_at: "2027-08-14T23:59:59Z",
+                  admin: {
+                    id: "usr_adm_9912",
+                    name: "Dr. Hassan El Nokhba",
+                    email: "admin@elnokhba.com",
+                    phone: "+201012345678"
+                  },
+                  database_status: "provisioned_and_migrated",
+                  created_at: "2026-08-14T23:28:48Z"
                 }
               }
+            },
+            {
+              status: 409,
+              description: "409 Conflict — Subdomain already taken",
+              body: { success: false, error: { code: "SUBDOMAIN_ALREADY_EXISTS", message: "The subdomain 'el-nokhba' is already registered.", details: null } }
             }
           ]
         },
