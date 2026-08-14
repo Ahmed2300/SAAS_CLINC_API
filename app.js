@@ -118,7 +118,9 @@ document.addEventListener("DOMContentLoaded", () => {
         return matchesMethod && matchesQuery;
       });
 
-      if (filteredEndpoints.length === 0 && state.searchQuery) return;
+      if (filteredEndpoints.length === 0) return;
+
+
 
       html += `
         <div class="tag-section" id="tag-${mod.id}">
