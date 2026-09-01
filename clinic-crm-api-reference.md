@@ -1,1827 +1,1003 @@
-# Clinic CRM — API Contract & Reference
+# Delta Clinics CRM — REST API Contract & Reference
 
-**Version:** v1 · **Format:** REST / JSON · **Audience:** Frontend team, mobile team, and third-party integrators building on the Clinic CRM backend
+**Version:** v1.1 · **Format:** REST / JSON · **Architecture:** Multi-Database Multi-Tenancy (Stancl Tenancy) + HMVC Modules (Laravel 13 & PHP 8.5) · **Created & Maintained by:** DEVesters
 
-This document is the full API contract for the Clinic Management System described in the project documentation guide: Patients, Appointments, Doctors, Medical Records, Billing, Inventory, Reports, and Roles & Permissions. Every endpoint below includes its method, path, required role(s), request shape, and response shape.
+This document is the official API specification and contract for the **Delta Clinics CRM** SaaS platform. It serves as the single source of truth across the Central SaaS Management Portal, Tenant Clinic Workspaces, Medical Staff Portals, Public Booking Interfaces, and Third-Party Integrations.
 
 ---
 
-## 1. Conventions
+## 1. Architecture & Conventions
 
-### Base URL
-```
-https://api.[CLINIC_DOMAIN].com/v1
-```
-All paths in this document are relative to the base URL above.
+### Base URLs & Domain Routing
+
+The platform operates on a **Subdomain-Driven Multi-Tenant Architecture** backed by isolated per-clinic databases:
+
+| Scope | Base URL Format | Example | Description |
+|---|---|---|---|
+| **Central SaaS Platform** | `https://[CENTRAL_DOMAIN]/v1` | `https://api.delta-clinics.com/v1` or `http://localhost/v1` | System Administration, Plans, Offline Billing Approvals, SaaS Telemetry, Server Health |
+| **Tenant Clinic API** | `https://[TENANT_SUBDOMAIN].[DOMAIN]/api/v1` | `https://elshifa.delta-clinics.com/api/v1` or `http://elshifa.localhost/api/v1` | Clinic Staff Dashboard, Doctors, Medical Records, Billing, Inventory, Clinic Settings |
+| **Public Guest Booking** | `https://[TENANT_SUBDOMAIN].[DOMAIN]/api/v1/public` | `https://elshifa.delta-clinics.com/api/v1/public` | Public Branch Locator, Doctor Roster, Slot Discovery & Guest Booking with QR generation |
 
 ### Headers
-Every authenticated request must include:
-```
-Authorization: Bearer [ACCESS_TOKEN]
+
+#### Central Admin Requests
+```http
+Authorization: Bearer [SUPER_ADMIN_TOKEN]
 Content-Type: application/json
-X-Clinic-Id: [CLINIC_ID]        // required for multi-clinic accounts; identifies which branch the request applies to
 ```
 
+#### Tenant Authenticated Requests
+```http
+Authorization: Bearer [TENANT_ACCESS_TOKEN]
+Content-Type: application/json
+X-Tenant: [TENANT_ID_OR_SLUG]       // Optional if calling via tenant subdomain; required if calling via central proxy
+X-Domain: [TENANT_DOMAIN]           // Optional; resolves tenant context dynamically
+```
+
+#### Financial Write Operations (Idempotency)
+```http
+Idempotency-Key: [UNIQUE_CLIENT_UUID]
+```
+Supported on `POST /invoices` and `POST /invoices/{id}/payments`. Replaying the same key returns the original cached response rather than creating duplicate transactions.
+
+---
+
 ### Response Envelope
-All successful responses are wrapped the same way:
+
+All API endpoints return a standardized JSON response:
+
+#### Success Envelope (Single Resource)
 ```json
 {
   "success": true,
-  "data": { },
-  "meta": { }
-}
-```
-`meta` is omitted on single-resource responses and present on list responses (see Pagination below).
-
-Errors always follow this shape (details in [Section 9 — Error Handling](#9-error-handling)):
-```json
-{
-  "success": false,
-  "error": {
-    "code": "RESOURCE_NOT_FOUND",
-    "message": "Patient with id 'pat_7c3f21' was not found.",
-    "details": null
+  "data": {
+    "id": "res_7c3f21",
+    "status": "confirmed"
   }
 }
 ```
 
-### Pagination
-List endpoints accept:
-
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `page` | integer | 1 | Page number, 1-indexed |
-| `limit` | integer | 20 | Items per page, max 100 |
-| `sort` | string | `-created_at` | Field to sort by; prefix with `-` for descending |
-
-List responses include:
+#### Success Envelope (Paginated List)
 ```json
-"meta": {
-  "page": 1,
-  "limit": 20,
-  "total": 143,
-  "total_pages": 8
+{
+  "success": true,
+  "data": [ ... ],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 143,
+    "total_pages": 8
+  }
 }
 ```
 
-### ID Format
-Every resource ID is a prefixed string, e.g. `pat_7c3f21` (patient), `apt_5e2b18` (appointment). The prefix tells you the resource type at a glance — never parse or rely on the suffix format itself.
-
-### Idempotency
-`POST` requests that create financial records (`/invoices`, `/invoices/{id}/payments`) accept an optional header:
+#### Error Envelope
+```json
+{
+  "success": false,
+  "error": {
+    "code": "PLAN_LIMIT_EXCEEDED",
+    "message": "Maximum doctor capacity reached for your active plan (limit: 5). Please upgrade your subscription or request an add-on.",
+    "details": {
+      "limit": 5,
+      "current_usage": 5,
+      "resource": "doctors"
+    }
+  }
+}
 ```
-Idempotency-Key: [UNIQUE_CLIENT_GENERATED_KEY]
-```
-Replaying the same key returns the original response instead of creating a duplicate record.
 
 ---
 
-## 2. Authentication & Roles
+### Pagination & Sorting
 
-### Auth model
-JWT bearer tokens. `access_token` is short-lived (15 minutes); `refresh_token` is long-lived (7 days) and single-use — each refresh call rotates it.
+List endpoints accept standard query parameters:
 
-### Roles
-| Role | Scope |
-|---|---|
-| `super_admin` | DEVesters platform owner. Full root access across all clinics, platform billing, global settings & DB management |
-| `support_admin` | DEVesters technical support team. Onboards clinics, sets up staff/secretaries & provides technical help without root financial keys |
-| `admin` / `clinic_manager` | Full access within their assigned clinic branch(es) |
-| `doctor` | Own schedule, assigned appointments, consultations, prescriptions they authored |
-| `nurse` | Patient vitals, appointment check-in, read-only medical records |
-| `receptionist` | Patients, appointments, check-in, invoice creation |
-| `accountant` | Invoices, payments, financial reports (no clinical data) |
-| `patient` | Own profile, own appointments, own invoices, own prescriptions (read-only + booking) |
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `page` | integer | `1` | 1-indexed page number |
+| `limit` | integer | `20` | Items per page (max 100) |
+| `sort` | string | `-created_at` | Field to sort by; prefix with `-` for descending order |
+| `search` | string | `null` | Keyword search across relevant entity columns |
 
-### Detailed Permission Matrix Across Modules
+---
+
+### Prefixed Unique Resource IDs
+
+Every entity in the database features a typed prefix string:
+
+| Prefix | Entity | Example | Description |
+|---|---|---|---|
+| `usr_` | User / Staff / Admin | `usr_d4e5f6` | System Admins, Clinic Managers, Doctors, Nurses, Receptionists, Patients |
+| `cli_` | Clinic / Branch | `cli_a1b2c3` | Physical branch location with coordinates |
+| `doc_` | Doctor Profile | `doc_9f1a20` | Medical practitioner profile |
+| `spec_`| Specialty | `spec_3b7a11` | Medical specialty (Dermatology, Cardiology, etc.) |
+| `sch_` | Doctor Schedule | `sch_4e9b12` | Recurring weekly shift schedule |
+| `slot_`| Time Slot | `slot_8c2d15` | Individual bookable time window |
+| `res_` | Reservation / Booking | `res_5e2b18` | Appointment booking record |
+| `pat_` | Patient Profile | `pat_7c3f21` | Patient clinical profile |
+| `cst_` | Consultation | `cst_3d8f42` | EMR diagnosis & vital signs entry |
+| `rx_`  | Prescription | `rx_6a1c90` | E-prescription & medication orders |
+| `inv_` | Invoice | `inv_2f7e11` | Billing invoice |
+| `ivi_` | Invoice Item | `ivi_1a2b3c` | Individual bill line item |
+| `pay_` | Payment | `pay_8b4d33` | Settled payment transaction |
+| `exp_` | Expense | `exp_9d4a12` | Clinic operational expense |
+| `itm_` | Inventory Item | `itm_1a9c77` | Medical consumable / pharmacy stock item |
+| `adj_` | Stock Adjustment | `adj_4e9b12` | Atomic inventory adjustment audit log |
+| `ntf_` | Notification | `ntf_4c2e19` | User notification record |
+| `pln_` | Subscription Plan | `pln_enterprise`| SaaS subscription tier |
+| `sub_` | Subscription Request | `sub_8b1a44` | Offline payment receipt submission |
+| `tik_` | Support Ticket | `tik_9a4f22` | Clinic-to-System Support ticket |
+| `msg_` | Support / Chat Message | `msg_1b8e77` | Message inside ticket or reservation |
+| `set_` | Tenant Settings | `set_main` | Clinic branding and configuration |
+
+---
+
+## 2. Roles & Comprehensive RBAC Matrix
+
+The system implements strict **Role-Based Access Control (RBAC)** across two isolation layers:
+
+### Platform-Level Roles (Central Scope)
+- `super_admin`: Full root platform access across all tenant databases, server hardware telemetry, plan CRUD, tenant provisioning, and billing approvals.
+- `support_admin`: Platform technical support. Manages clinic onboarding, handles support tickets, and troubleshoots tenant configurations without root financial keys.
+- `finance_admin`: Platform accountant. Reviews subscription payments, manages plan pricing, and inspects MRR/ARR analytics.
+
+### Clinic-Level Roles (Tenant Scope)
+- `admin` / `clinic_manager`: Full administrative management within the clinic tenant (branches, doctors, staff, inventory, billing, settings, support).
+- `doctor`: Medical practitioner. Manages own schedule, conducts consultations, writes e-prescriptions, and views assigned patient records.
+- `nurse`: Clinical support. Records patient vitals, conducts appointment check-in, adjusts medical consumable inventory, and views medical records.
+- `receptionist`: Front-desk operator. Manages reservations, performs QR camera check-in, collects invoice payments, and registers patients.
+- `accountant`: Financial controller. Full access to billing, invoices, expenses, payment methods, and financial reporting.
+- `patient`: Clinic client. Public/self-booking, access to personal appointment QR tickets, prescription history, and invoice settlement.
+
+---
+
+### Detailed RBAC Permission Matrix Across Modules
 
 | Module / Feature | `super_admin` | `support_admin` | `clinic_manager` | `doctor` | `receptionist` | `nurse` | `accountant` | `patient` |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Platform Settings & DB** | ✅ Full | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Manage Clinics & Branches** | ✅ Full | ✅ Onboard | ⚠️ Own Branch | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Manage Users & Staff** | ✅ Full | ✅ Setup | ✅ Clinic Staff | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Roles & Permissions** | ✅ Full | 👁️ Read | 👁️ Read | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Patient Profiles** | ✅ Full | ✅ Support | ✅ Full | 👁️ Read/Edit | ✅ Full | 👁️ Read | ❌ | 👁️ Self |
-| **Doctors & Schedules** | ✅ Full | ✅ Setup | ✅ Full | ✏️ Own Schedule | 👁️ Read | 👁️ Read | ❌ | 👁️ Read |
-| **Appointments & Booking** | ✅ Full | ✅ Support | ✅ Full | 👁️ Own | ✅ Full | ✅ Check-in | ❌ | ✏️ Self Book |
-| **QR Code Check-in** | ✅ Full | ✅ Support | ✅ Full | 👁️ Read | ✅ Scan/Check-in | ✅ Scan/Check-in | ❌ | 👁️ Self QR |
-| **Consultations & Vitals** | ✅ Full | ❌ | 👁️ Read | ✍️ Author | ❌ | ✏️ Vitals Only | ❌ | 👁️ Self |
-| **Prescriptions** | ✅ Full | ❌ | 👁️ Read | ✍️ Create/Edit | ❌ | 👁️ Read | ❌ | 👁️ Self |
-| **Invoices & Payments** | ✅ Full | ❌ | ✅ Full | ❌ | ✅ Create/Collect | ❌ | ✅ Full | 👁️ Self Pay |
-| **Inventory & Stock** | ✅ Full | ❌ | ✅ Full | 👁️ Read | ❌ | ✏️ Adjust Stock | ❌ | ❌ |
-| **Reports & Analytics** | ✅ Full | ❌ | ✅ Branch | 👁️ Self Perf | ❌ | ❌ | 💵 Financial | ❌ |
-| **Audit Logs** | ✅ Full | 👁️ Read | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
-Each endpoint below explicitly lists the exact roles permitted to call it under **Roles**.
-
+| **Server Health & Telemetry** | ✅ Full | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **SaaS Plans & MRR Analytics** | ✅ Full | 👁️ Read | 👁️ Read | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Tenant Provisioning & Database** | ✅ Full | ✅ Onboard | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Subscription Requests & Approvals** | ✅ Approve | 👁️ Read | ✍️ Submit | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Platform Support Tickets** | ✅ Full | ✅ Full | ✍️ Submit/Chat | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Internal Admin Ticket Notes** | ✅ Private | ✅ Private | ❌ Hidden | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Tenant Settings & Theming** | ✅ Full | 👁️ Read | ✅ Full | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Branches & Geolocation** | ✅ Full | ✅ Setup | ✅ Full | 👁️ Read | 👁️ Read | 👁️ Read | 👁️ Read | 👁️ Read |
+| **Staff & User Management** | ✅ Full | ✅ Setup | ✅ Full | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Doctor Profiles & Shifts** | ✅ Full | ✅ Setup | ✅ Full | ✏️ Own Schedule | 👁️ Read | 👁️ Read | ❌ | 👁️ Read |
+| **Reservations & QR Check-in** | ✅ Full | ✅ Support | ✅ Full | 👁️ Own | ✅ Scan / Check-in | ✅ Scan / Check-in | ❌ | ✏️ Self Book / QR |
+| **In-Booking Patient Chat** | ❌ | ❌ | ✅ Moderate | ✍️ Direct Chat | ✍️ Direct Chat | ❌ | ❌ | ✍️ Own Chat |
+| **Consultations & Vitals** | ✅ Full | ❌ | 👁️ Read | ✍️ Author | ❌ | ✏️ Vitals Only | ❌ | 👁️ Self Records |
+| **Prescriptions & E-Pharmacy** | ✅ Full | ❌ | 👁️ Read | ✍️ Author | ❌ | 👁️ Read | ❌ | 👁️ Self Rx |
+| **Invoices, Payments & Refunds** | ✅ Full | ❌ | ✅ Full | ❌ | ✅ Create / Collect | ❌ | ✅ Full | 👁️ Self Invoices |
+| **Inventory & Stock Adjustments**| ✅ Full | ❌ | ✅ Full | 👁️ Read | ❌ | ✏️ Adjust Stock | ❌ | ❌ |
+| **Queued Notifications & WS** | ✅ Full | ❌ | ✅ Dispatch | 👁️ Self | 👁️ Self | 👁️ Self | 👁️ Self | 👁️ Self |
+| **Financial & SaaS Telemetry** | ✅ Platform | ❌ | 💵 Branch | 👁️ Self Perf | ❌ | ❌ | 💵 Financial | ❌ |
+| **Audit Logs** | ✅ Full | 👁️ Read | 👁️ Branch | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
 ## 3. Data Models
 
-These are the canonical shapes referenced throughout this document. Endpoint request/response bodies below use these fields unless stated otherwise.
-
-### Patient
-| Field | Type | Notes |
-|---|---|---|
-| `id` | string | `pat_` prefix |
-| `full_name` | string | |
-| `national_id` | string | Unique |
-| `phone` | string | Unique |
-| `email` | string \| null | |
-| `date_of_birth` | string (date) | |
-| `gender` | string | `male` \| `female` |
-| `address` | string \| null | |
-| `blood_type` | string \| null | e.g. `O+` |
-| `allergies` | string[] | |
-| `chronic_conditions` | string[] | |
-| `emergency_contact` | object \| null | `{ name, phone, relation }` |
-| `status` | string | `active` \| `archived` |
-| `created_at` / `updated_at` | string (ISO 8601) | |
-
-### Doctor
-| Field | Type | Notes |
-|---|---|---|
-| `id` | string | `doc_` prefix |
-| `user_id` | string | Linked staff account |
-| `full_name` | string | |
-| `specialty` | string | |
-| `license_number` | string | Unique |
-| `clinic_ids` | string[] | Clinics this doctor practices at |
-| `consultation_fee` | number | |
-| `bio` | string \| null | |
-| `status` | string | `active` \| `on_leave` \| `inactive` |
-
-### Appointment
-| Field | Type | Notes |
-|---|---|---|
-| `id` | string | `apt_` prefix |
-| `patient_id` | string | |
-| `doctor_id` | string | |
-| `clinic_id` | string | |
-| `scheduled_at` | string (ISO 8601) | |
-| `duration_minutes` | integer | Default 30 |
-| `type` | string | `consultation` \| `follow_up` \| `procedure` |
-| `status` | string | `scheduled` \| `confirmed` \| `checked_in` \| `in_progress` \| `completed` \| `cancelled` \| `no_show` |
-| `reason` | string \| null | |
-| `notes` | string \| null | |
-| `created_by` | string | User id |
-
-### Consultation (medical record entry)
-| Field | Type | Notes |
-|---|---|---|
-| `id` | string | `cst_` prefix |
-| `appointment_id` | string | |
-| `patient_id` / `doctor_id` | string | |
-| `chief_complaint` | string | |
-| `diagnosis` | string | |
-| `vitals` | object | `{ blood_pressure, heart_rate, temperature_c, weight_kg, height_cm }` |
-| `notes` | string \| null | |
-| `follow_up_required` | boolean | |
-| `follow_up_date` | string (date) \| null | |
-
-### Prescription
-| Field | Type | Notes |
-|---|---|---|
-| `id` | string | `rx_` prefix |
-| `consultation_id` | string | |
-| `patient_id` / `doctor_id` | string | |
-| `medications` | array | `[{ inventory_item_id, name, dosage, frequency, duration_days, instructions }]` |
-| `status` | string | `active` \| `fulfilled` \| `cancelled` |
-| `issued_at` | string (ISO 8601) | |
-
-### Invoice
-| Field | Type | Notes |
-|---|---|---|
-| `id` | string | `inv_` prefix |
-| `patient_id` / `appointment_id` / `clinic_id` | string | |
-| `items` | array | `[{ description, quantity, unit_price, total }]` |
-| `subtotal` / `discount` / `tax` / `total` | number | |
-| `amount_paid` / `balance_due` | number | |
-| `status` | string | `draft` \| `pending` \| `partially_paid` \| `paid` \| `void` |
-| `due_date` | string (date) | |
-
-### Payment
-| Field | Type | Notes |
-|---|---|---|
-| `id` | string | `pay_` prefix |
-| `invoice_id` | string | |
-| `amount` | number | |
-| `method` | string | `cash` \| `card` \| `insurance` \| `wallet` |
-| `reference_number` | string \| null | |
-| `received_by` | string | User id |
-| `paid_at` | string (ISO 8601) | |
-
-### InventoryItem
-| Field | Type | Notes |
-|---|---|---|
-| `id` | string | `itm_` prefix |
-| `name` | string | |
-| `category` | string | `medicine` \| `supply` |
-| `unit` | string | e.g. `box`, `vial` |
-| `quantity_in_stock` | integer | |
-| `reorder_level` | integer | Triggers low-stock alert |
-| `unit_cost` | number | |
-| `expiry_date` | string (date) \| null | |
-| `clinic_id` | string | |
-
----
-
-## 4. Endpoint Summary
-
-| Module | Method & Path | Description |
-|---|---|---|
-| **Auth** | `POST /auth/login` | Log in with email + password |
-| | `POST /auth/refresh` | Rotate access token |
-| | `POST /auth/logout` | Revoke refresh token |
-| | `POST /auth/forgot-password` | Request reset email |
-| | `POST /auth/reset-password` | Set new password |
-| | `GET /auth/me` | Current user profile |
-| **Users** | `GET /users` | List staff |
-| | `POST /users` | Invite/create staff member |
-| | `GET /users/{userId}` | Get staff member |
-| | `PATCH /users/{userId}` | Update staff member |
-| | `DELETE /users/{userId}` | Remove staff member |
-| | `PATCH /users/{userId}/status` | Activate/deactivate |
-| **Roles** | `GET /roles` | List roles |
-| | `GET /roles/{roleId}` | Get role + permissions |
-| | `PATCH /roles/{roleId}/permissions` | Update permission set |
-| **Clinics** | `GET /clinics` | List branches |
-| | `POST /clinics` | Create branch |
-| | `GET /clinics/{clinicId}` | Get branch |
-| | `PATCH /clinics/{clinicId}` | Update branch |
-| | `DELETE /clinics/{clinicId}` | Deactivate branch |
-| **Patients** | `GET /patients` | Search/list patients |
-| | `POST /patients` | Register patient |
-| | `GET /patients/{patientId}` | Get patient |
-| | `PATCH /patients/{patientId}` | Update patient |
-| | `DELETE /patients/{patientId}` | Archive patient |
-| | `GET /patients/{patientId}/medical-history` | Full consultation + prescription history |
-| | `GET /patients/{patientId}/appointments` | Patient's appointments |
-| | `GET /patients/{patientId}/invoices` | Patient's invoices |
-| **Doctors** | `GET /doctors` | List doctors |
-| | `POST /doctors` | Add doctor |
-| | `GET /doctors/{doctorId}` | Get doctor |
-| | `PATCH /doctors/{doctorId}` | Update doctor |
-| | `DELETE /doctors/{doctorId}` | Remove doctor |
-| | `GET /doctors/{doctorId}/schedule` | Weekly availability |
-| | `PUT /doctors/{doctorId}/schedule` | Replace availability |
-| | `GET /doctors/{doctorId}/appointments` | Doctor's appointments |
-| **Appointments** | `GET /appointments` | List/filter appointments |
-| | `POST /appointments` | Book appointment |
-| | `GET /appointments/{appointmentId}` | Get appointment |
-| | `PATCH /appointments/{appointmentId}` | Reschedule/edit |
-| | `DELETE /appointments/{appointmentId}` | Cancel appointment |
-| | `PATCH /appointments/{appointmentId}/check-in` | Front-desk check-in |
-| | `PATCH /appointments/{appointmentId}/status` | Transition status |
-| | `GET /appointments/available-slots` | Free slot finder |
-| **Consultations** | `GET /consultations` | List consultations |
-| | `POST /consultations` | Record consultation |
-| | `GET /consultations/{consultationId}` | Get consultation |
-| | `PATCH /consultations/{consultationId}` | Amend consultation |
-| **Prescriptions** | `GET /prescriptions` | List prescriptions |
-| | `POST /prescriptions` | Issue prescription |
-| | `GET /prescriptions/{prescriptionId}` | Get prescription |
-| | `PATCH /prescriptions/{prescriptionId}` | Update prescription |
-| | `DELETE /prescriptions/{prescriptionId}` | Cancel prescription |
-| **Billing** | `GET /invoices` | List invoices |
-| | `POST /invoices` | Create invoice |
-| | `GET /invoices/{invoiceId}` | Get invoice |
-| | `PATCH /invoices/{invoiceId}` | Edit draft invoice |
-| | `DELETE /invoices/{invoiceId}` | Void invoice |
-| | `POST /invoices/{invoiceId}/payments` | Record payment |
-| | `GET /invoices/{invoiceId}/payments` | List payments on invoice |
-| | `POST /invoices/{invoiceId}/refund` | Refund a payment |
-| **Inventory** | `GET /inventory/items` | List stock items |
-| | `POST /inventory/items` | Add stock item |
-| | `GET /inventory/items/{itemId}` | Get item |
-| | `PATCH /inventory/items/{itemId}` | Update item |
-| | `DELETE /inventory/items/{itemId}` | Remove item |
-| | `POST /inventory/items/{itemId}/stock-adjustments` | Adjust quantity |
-| | `GET /inventory/low-stock` | Items at/below reorder level |
-| **Notifications** | `GET /notifications` | List sent/queued notifications |
-| | `POST /notifications/send` | Trigger manual notification |
-| | `PATCH /notifications/{notificationId}/read` | Mark read (patient portal) |
-| **Reports** | `GET /reports/revenue` | Revenue over time |
-| | `GET /reports/appointments-summary` | Volume by status/doctor |
-| | `GET /reports/no-show-rate` | No-show percentage |
-| | `GET /reports/doctor-performance` | Per-doctor metrics |
-| | `GET /reports/patients-growth` | New patients over time |
-| **Audit Logs** | `GET /audit-logs` | List system activity |
-| | `GET /audit-logs/{logId}` | Get single log entry |
-
----
-
-## 5. Authentication
-
-#### `POST /auth/login`
-**Roles:** none (public)
-
-Request:
-```json
-{
-  "email": "dr.hassan@clinic.com",
-  "password": "••••••••"
+### 1. Tenant (Central)
+```typescript
+interface Tenant {
+  id: string;                      // e.g. "elshifa"
+  tenancy_db_name: string;         // e.g. "tenant_elshifa"
+  status: "active" | "trial" | "suspended" | "paused";
+  plan_id: string;                 // e.g. "pln_growth"
+  subscription_expires_at: string; // ISO 8601
+  max_doctors: number;
+  max_branches: number;
+  max_specialties: number;
+  max_staff: number;
+  extra_doctors: number;
+  extra_branches: number;
+  extra_staff: number;
+  domains: Array<{ domain: string }>;
+  created_at: string;
 }
 ```
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "access_token": "eyJhbGciOi...",
-    "refresh_token": "8f3a1c9e-...",
-    "expires_in": 900,
-    "user": {
-      "id": "usr_d4e5f6",
-      "full_name": "Dr. Ahmed Hassan",
-      "role": "doctor",
-      "clinic_id": "cli_a1b2c3"
+
+### 2. Plan (Central)
+```typescript
+interface Plan {
+  id: string;                      // pln_ prefix
+  name: string;                    // "Growth Plan", "Enterprise"
+  slug: string;                    // "growth", "enterprise"
+  price: number;                   // Monthly price in EGP / USD
+  price_before_discount: number | null;
+  is_featured: boolean;
+  billing_cycle: "monthly" | "yearly";
+  max_doctors: number;
+  max_branches: number;
+  max_specialties: number;
+  max_staff: number;
+  extra_doctor_price: number;
+  extra_branch_price: number;
+  extra_staff_price: number;
+  features: string[];              // JSON array of feature bullets
+  is_trial: boolean;
+  trial_days: number;
+  status: "active" | "inactive";
+}
+```
+
+### 3. SubscriptionRequest (Central)
+```typescript
+interface SubscriptionRequest {
+  id: string;                      // sub_ prefix
+  tenant_id: string;
+  plan_id: string;
+  type: "plan_upgrade" | "plan_renewal" | "addon_doctor" | "addon_branch" | "addon_staff";
+  quantity: number;
+  amount: number;
+  payment_method: "instapay" | "vodafone_cash" | "bank_transfer" | "manual";
+  transaction_reference: string;
+  receipt_url: string;
+  status: "pending" | "approved" | "rejected";
+  notes: string | null;
+  admin_notes: string | null;
+  processed_by: string | null;     // Super Admin User ID
+  processed_at: string | null;
+  created_at: string;
+}
+```
+
+### 4. SupportTicket & SupportMessage (Central & Real-Time)
+```typescript
+interface SupportTicket {
+  id: string;                      // tik_ prefix
+  tenant_id: string;
+  user_id: string;                 // Submitting Clinic User ID
+  subject: string;
+  status: "open" | "pending" | "in_progress" | "resolved" | "closed";
+  priority: "low" | "medium" | "high" | "urgent";
+  last_message_at: string;
+  messages: SupportMessage[];
+}
+
+interface SupportMessage {
+  id: string;                      // msg_ prefix
+  support_ticket_id: string;
+  sender_type: "system_admin" | "tenant_user";
+  sender_id: string;
+  sender_name: string;
+  message: string;
+  attachment_url: string | null;
+  is_internal: boolean;            // Private note for system admins
+  read_at: string | null;
+  created_at: string;
+}
+```
+
+### 5. TenantSetting (Tenant)
+```typescript
+interface TenantSetting {
+  id: "set_main";
+  tenant_name: string;
+  logo_url: string | null;
+  phone: string;
+  email: string;
+  address: string;
+  timezone: string;
+  currency: string;
+  primary_color: string;           // Hex code (e.g. #059669)
+  secondary_color: string;         // Hex code
+  accent_color: string;            // Hex code
+  accent_soft_color: string;       // Hex code
+  bg_color: string;                // Hex code
+  card_bg_color: string;           // Hex code
+  theme_preset_id: "emerald" | "sapphire" | "cyan" | "teal" | "violet" | "ruby" | "custom";
+}
+```
+
+### 6. Reservation / Appointment (Tenant & Public)
+```typescript
+interface Reservation {
+  id: string;                      // res_ prefix
+  patient_id: string;              // usr_ or pat_ ID
+  doctor_id: string;               // doc_ prefix
+  clinic_id: string;               // cli_ prefix (branch)
+  time_slot_id: string;            // slot_ prefix
+  reservation_date: string;        // YYYY-MM-DD
+  status: "pending" | "accepted" | "confirmed" | "completed" | "cancelled";
+  reservation_type: "consultation" | "follow_up" | "procedure" | "emergency";
+  notes: string | null;
+  qr_code_token: string;           // Secure token for camera check-in
+  created_at: string;
+}
+```
+
+---
+
+## 4. Central SaaS & Super Admin Endpoints (`/v1`)
+
+### Authentication (`/v1/admin/auth` or `/v1/auth`)
+
+#### `POST /v1/admin/auth/login`
+Authenticates a Central System Administrator.
+
+- **Roles:** `public`
+- **Request Body:**
+  ```json
+  {
+    "email": "superadmin@delta-clinics.com",
+    "password": "password123"
+  }
+  ```
+- **Response `200 OK`:**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "access_token": "1|admin_token_hash",
+      "expires_in": 900,
+      "user": {
+        "id": "usr_superadmin",
+        "full_name": "Platform Super Admin",
+        "email": "superadmin@delta-clinics.com",
+        "role": "super_admin"
+      }
     }
   }
-}
-```
-Errors: `401 INVALID_CREDENTIALS`, `403 ACCOUNT_INACTIVE`
+  ```
+
+#### `GET /v1/admin/auth/me`
+- **Roles:** `super_admin`, `support_admin`, `finance_admin`
+- **Response `200 OK`:** Current authenticated administrator details.
+
+#### `POST /v1/admin/auth/logout`
+- **Roles:** `super_admin`, `support_admin`, `finance_admin`
+- **Response `200 OK`:** `{ "success": true, "data": { "message": "Logged out successfully." } }`
 
 ---
 
-#### `POST /auth/refresh`
-**Roles:** none (requires valid refresh token)
+### System Admin Accounts & Central Roles
 
-Request:
-```json
-{ "refresh_token": "8f3a1c9e-..." }
-```
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "access_token": "eyJhbGciOi...",
-    "refresh_token": "a91cf2b0-...",
-    "expires_in": 900
+#### `GET /v1/admin/users`
+List all central system administrators.
+- **Roles:** `super_admin`
+
+#### `POST /v1/admin/users`
+Create a new platform administrator.
+- **Roles:** `super_admin`
+- **Request Body:**
+  ```json
+  {
+    "name": "Sarah Mansour",
+    "email": "sarah.support@delta-clinics.com",
+    "phone": "+201011112233",
+    "password": "SecurePassword123!",
+    "role": "support_admin"
   }
-}
-```
-Errors: `401 INVALID_OR_EXPIRED_TOKEN`
+  ```
+
+#### `PATCH /v1/admin/users/{id}/status`
+Toggle platform administrator active state (`status: "active" | "inactive"`).
+- **Roles:** `super_admin`
+
+#### `GET /v1/admin/roles` & `GET /v1/admin/permissions`
+List central RBAC roles and permissions.
+- **Roles:** `super_admin`
+
+#### `PATCH /v1/admin/roles/{id}/permissions`
+Synchronize permission keys for a central role.
+- **Roles:** `super_admin`
+- **Request Body:** `{ "permissions": ["plans:create", "plans:update", "subscriptions:approve"] }`
 
 ---
 
-#### `POST /auth/logout`
-**Roles:** any authenticated user
+### Tenant Provisioning & Clinic Management
 
-Request: *(empty body)*
-```json
-{ "refresh_token": "8f3a1c9e-..." }
-```
-Response `204 No Content`
+#### `GET /v1/clinics/check-availability/{id}`
+Verify whether a tenant subdomain/slug is available.
+- **Roles:** `public`
+- **Response `200 OK`:**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "slug": "elshifa",
+      "is_available": true
+    }
+  }
+  ```
+
+#### `GET /v1/clinics`
+List all registered clinic tenants with active subscriber metrics and domain bindings.
+- **Roles:** `super_admin`, `support_admin`
+
+#### `POST /v1/clinics`
+Provision a new clinic tenant, create an isolated tenant MySQL database, run tenant migrations, and seed initial admin credentials.
+- **Roles:** `super_admin`, `support_admin`
+- **Request Body:**
+  ```json
+  {
+    "id": "elshifa",
+    "name": "El Shifa Specialized Clinics",
+    "plan_id": "pln_growth",
+    "domain": "elshifa.delta-clinics.com",
+    "admin_name": "Dr. Tarek Hegazi",
+    "admin_email": "admin@elshifa.com",
+    "admin_phone": "+201099887766",
+    "admin_password": "ClinicAdminPassword123!",
+    "trial_days": 14
+  }
+  ```
+- **Response `201 Created`:** Provisioned tenant details, assigned database `tenant_elshifa`, and seeded admin account.
+
+#### `PATCH /v1/clinics/{id}`
+Update clinic status (`active`, `suspended`, `paused`) or domain bindings.
+- **Roles:** `super_admin`
+
+#### `DELETE /v1/clinics/{id}`
+Decommission clinic tenant and drop isolated database.
+- **Roles:** `super_admin`
+
+#### `POST /v1/clinics/{id}/logo`
+Upload and update clinic brand logo.
+- **Roles:** `super_admin`, `support_admin`
 
 ---
 
-#### `POST /auth/forgot-password`
-**Roles:** none (public)
+### Subscription Plans & Analytics
 
-Request:
-```json
-{ "email": "dr.hassan@clinic.com" }
-```
-Response `200 OK`:
-```json
-{ "success": true, "data": { "message": "If that email exists, a reset link has been sent." } }
-```
-Note: always returns 200 regardless of whether the email exists, to avoid account enumeration.
+#### `GET /v1/plans`
+List all SaaS subscription plans with feature limits and addon pricing.
+- **Roles:** `public` (for landing page) / `super_admin`
 
----
-
-#### `POST /auth/reset-password`
-**Roles:** none (requires valid reset token from email)
-
-Request:
-```json
-{
-  "reset_token": "9c2f-reset-token",
-  "new_password": "NewSecurePass123!"
-}
-```
-Response `200 OK`:
-```json
-{ "success": true, "data": { "message": "Password updated successfully." } }
-```
-Errors: `400 WEAK_PASSWORD`, `401 INVALID_OR_EXPIRED_TOKEN`
-
----
-
-#### `GET /auth/me`
-**Roles:** any authenticated user
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "usr_d4e5f6",
-    "full_name": "Dr. Ahmed Hassan",
-    "email": "dr.hassan@clinic.com",
-    "role": "doctor",
-    "clinic_id": "cli_a1b2c3",
+#### `POST /v1/plans`
+Create a new subscription tier.
+- **Roles:** `super_admin`
+- **Request Body:**
+  ```json
+  {
+    "name": "Professional Tier",
+    "slug": "professional",
+    "price": 1200,
+    "price_before_discount": 1500,
+    "is_featured": true,
+    "billing_cycle": "monthly",
+    "max_doctors": 10,
+    "max_branches": 3,
+    "max_specialties": 8,
+    "max_staff": 15,
+    "extra_doctor_price": 100,
+    "extra_branch_price": 300,
+    "extra_staff_price": 50,
+    "features": [
+      "Unlimited Patient Records",
+      "Full EMR & E-Prescriptions",
+      "QR Camera Check-in",
+      "Financial Invoicing & Payment Tracking",
+      "Medical Inventory & Stock Logs",
+      "Real-Time WebSocket Notifications"
+    ],
+    "is_trial": false,
+    "trial_days": 0,
     "status": "active"
   }
-}
-```
+  ```
 
----
-
-## 6. Users & Staff
-
-#### `GET /users`
-**Roles:** `admin`, `clinic_manager`
-
-Query params: `role`, `clinic_id`, `status`, `search` — plus standard pagination.
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "usr_d4e5f6",
-      "full_name": "Dr. Ahmed Hassan",
-      "email": "dr.hassan@clinic.com",
-      "phone": "+201012345678",
-      "role": "doctor",
-      "clinic_id": "cli_a1b2c3",
-      "status": "active",
-      "created_at": "2026-01-14T09:00:00Z"
+#### `GET /v1/plans/{id}`
+Retrieve plan details alongside real-time subscriber and revenue analytics.
+- **Roles:** `super_admin`
+- **Response `200 OK`:**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "id": "pln_professional",
+      "name": "Professional Tier",
+      "price": 1200,
+      "analytics": {
+        "total_subscribers": 42,
+        "active_subscribers": 38,
+        "trial_subscribers": 4,
+        "estimated_mrr": 45600,
+        "total_revenue_generated": 547200
+      }
     }
-  ],
-  "meta": { "page": 1, "limit": 20, "total": 12, "total_pages": 1 }
-}
-```
-
----
-
-#### `POST /users`
-**Roles:** `admin`, `clinic_manager`
-
-Sends an invitation email; the account is `pending` until the invite is accepted.
-
-Request:
-```json
-{
-  "full_name": "Mona Saeed",
-  "email": "mona.saeed@clinic.com",
-  "phone": "+201098765432",
-  "role": "receptionist",
-  "clinic_id": "cli_a1b2c3"
-}
-```
-Response `201 Created`:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "usr_7b1e90",
-    "full_name": "Mona Saeed",
-    "email": "mona.saeed@clinic.com",
-    "role": "receptionist",
-    "clinic_id": "cli_a1b2c3",
-    "status": "pending",
-    "created_at": "2026-08-12T10:15:00Z"
   }
-}
-```
-Errors: `409 EMAIL_ALREADY_EXISTS`, `422 VALIDATION_ERROR`
+  ```
 
 ---
 
-#### `GET /users/{userId}`
-**Roles:** `admin`, `clinic_manager`, self
+### Offline Subscription Requests & Approvals
 
-Response `200 OK`: same shape as list item above.
-Errors: `404 USER_NOT_FOUND`
+#### `GET /v1/subscription-requests`
+List all payment receipt submissions across tenant clinics.
+- **Roles:** `super_admin`, `finance_admin`
+- **Query Params:** `status` (`pending`, `approved`, `rejected`), `tenant_id`, `date_from`, `date_to`.
 
----
-
-#### `PATCH /users/{userId}`
-**Roles:** `admin`, `clinic_manager`, self (self cannot change `role`)
-
-Request (send only fields to change):
-```json
-{ "phone": "+201099998888" }
-```
-Response `200 OK`: updated user object.
-Errors: `403 FORBIDDEN_FIELD`, `404 USER_NOT_FOUND`
-
----
-
-#### `DELETE /users/{userId}`
-**Roles:** `admin`
-
-Soft-deletes the account (retained for audit trail; login disabled).
-
-Response `204 No Content`
-Errors: `404 USER_NOT_FOUND`, `409 CANNOT_DELETE_LAST_ADMIN`
-
----
-
-#### `PATCH /users/{userId}/status`
-**Roles:** `admin`, `clinic_manager`
-
-Request:
-```json
-{ "status": "inactive" }
-```
-Response `200 OK`:
-```json
-{ "success": true, "data": { "id": "usr_7b1e90", "status": "inactive" } }
-```
-
----
-
-## 7. Roles & Permissions
-
-#### `GET /roles`
-**Roles:** `admin`
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": [
-    { "id": "role_doctor", "name": "doctor", "description": "Clinical staff with prescribing rights" },
-    { "id": "role_receptionist", "name": "receptionist", "description": "Front-desk operations" }
-  ]
-}
-```
-
----
-
-#### `GET /roles/{roleId}`
-**Roles:** `admin`
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "role_receptionist",
-    "name": "receptionist",
-    "permissions": [
-      "patients:read", "patients:create", "patients:update",
-      "appointments:read", "appointments:create", "appointments:check_in",
-      "invoices:create"
-    ]
+#### `PATCH /v1/subscription-requests/{id}/approve`
+Approve an offline payment receipt, upgrade tenant plan, reset trial mode, extend expiration date, and sync resource limits.
+- **Roles:** `super_admin`, `finance_admin`
+- **Request Body:**
+  ```json
+  {
+    "admin_notes": "Instapay transaction verified against bank account."
   }
-}
-```
+  ```
+- **Response `200 OK`:** Updated subscription request object and updated tenant limits.
+
+#### `PATCH /v1/subscription-requests/{id}/reject`
+Reject invalid payment receipt with administrative feedback.
+- **Roles:** `super_admin`, `finance_admin`
+- **Request Body:**
+  ```json
+  {
+    "admin_notes": "Receipt reference number not found in bank statement. Please re-upload."
+  }
+  ```
 
 ---
 
-#### `PATCH /roles/{roleId}/permissions`
-**Roles:** `admin`
+### Central Support Desk & Real-Time Ticketing
 
-Request:
-```json
-{
-  "permissions": [
-    "patients:read", "patients:create", "patients:update",
-    "appointments:read", "appointments:create", "appointments:check_in"
-  ]
-}
-```
-Response `200 OK`: updated role object.
-Errors: `400 UNKNOWN_PERMISSION_KEY`, `403 CANNOT_MODIFY_ADMIN_ROLE`
+#### `GET /v1/support-tickets`
+List all support tickets opened by clinics.
+- **Roles:** `super_admin`, `support_admin`
+- **Query Params:** `status` (`open`, `pending`, `in_progress`, `resolved`, `closed`), `priority`, `tenant_id`.
+
+#### `GET /v1/support-tickets/{id}`
+Retrieve full message thread for a support ticket.
+- **Roles:** `super_admin`, `support_admin`
+
+#### `POST /v1/support-tickets/{id}/messages`
+Reply to a support ticket as a System Administrator. Supports public customer replies and private internal notes.
+- **Roles:** `super_admin`, `support_admin`
+- **Request Body:**
+  ```json
+  {
+    "message": "We have adjusted your database memory pool. Please retry the booking flow.",
+    "is_internal": false,
+    "attachment": null
+  }
+  ```
+  *(Set `"is_internal": true` to leave a private collaborative note visible only to System Admins).*
+
+#### `PATCH /v1/support-tickets/{id}/status`
+Update support ticket lifecycle state (`open`, `in_progress`, `resolved`, `closed`).
+- **Roles:** `super_admin`, `support_admin`
 
 ---
 
-## 8. Clinics (Multi-Branch)
+### Executive SaaS Analytics & Tenant Health Telemetry
 
-#### `GET /clinics`
-**Roles:** `admin`; scoped list for others (only clinics they belong to)
-
-Returns all tenant clinics with plan subscription details, custom admin contact, and live metrics (doctors count, branches count).
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "cli_a1b2c3",
-      "name": "Devesters Medical Center — Mansoura",
-      "domain": "devesters-mansoura",
-      "subdomain": "devesters-mansoura.localhost",
-      "address": "12 El-Gomhoria St, Mansoura",
-      "phone": "+205023456789",
-      "timezone": "Africa/Cairo",
-      "status": "active",
-      "plan": "Professional",
-      "subscription_expires_at": "2027-08-14T23:59:59Z",
-      "admin_name": "Dr. Ahmed Hassan",
-      "admin_email": "admin@clinic.com",
-      "admin_phone": "+201012345678",
-      "doctors_count": 8,
-      "branches_count": 2,
-      "created_at": "2026-01-15T10:00:00Z"
+#### `GET /v1/reports/executive-dashboard`
+Retrieve high-level business performance metrics for the platform.
+- **Roles:** `super_admin`, `finance_admin`
+- **Response `200 OK`:**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "mrr": 185400,
+      "arr": 2224800,
+      "arpu": 1287.50,
+      "active_clinics": 144,
+      "logo_churn_rate_percent": 1.4,
+      "plan_distribution": {
+        "starter": 45,
+        "professional": 72,
+        "enterprise": 27
+      }
     }
-  ],
-  "meta": { "page": 1, "limit": 20, "total": 3, "total_pages": 1 }
-}
-```
-
----
-
-#### `POST /clinics`
-**Roles:** `admin`
-
-Registers a new tenant clinic, provisions isolated tenant DB migrations/seeders automatically, saves plan limits, and sets up custom admin user credentials (`TenantCreated` Event).
-
-Request:
-```json
-{
-  "name": "El-Nokhba Specialized Clinic",
-  "domain": "el-nokhba",
-  "subdomain": "el-nokhba.localhost",
-  "address": "5 Nile Corniche, Mansoura",
-  "phone": "+201012345678",
-  "timezone": "Africa/Cairo",
-  "plan": "Professional",
-  "subscription_expires_at": "2027-08-14T23:59:59Z",
-  "admin_name": "Dr. Ahmed Hassan",
-  "admin_email": "admin@el-nokhba.com",
-  "admin_phone": "+201012345678",
-  "admin_password": "SecurePassword123!"
-}
-```
-Response `201 Created`:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "cli_el_nokhba",
-    "name": "El-Nokhba Specialized Clinic",
-    "domain": "el-nokhba",
-    "subdomain": "el-nokhba.localhost",
-    "address": "5 Nile Corniche, Mansoura",
-    "phone": "+201012345678",
-    "timezone": "Africa/Cairo",
-    "status": "active",
-    "plan": "Professional",
-    "subscription_expires_at": "2027-08-14T23:59:59Z",
-    "admin_name": "Dr. Ahmed Hassan",
-    "admin_email": "admin@el-nokhba.com",
-    "admin_phone": "+201012345678",
-    "database_name": "tenant_el_nokhba_db",
-    "created_at": "2026-08-14T23:36:00Z"
   }
-}
-```
-Errors: `422 VALIDATION_ERROR`
+  ```
 
-
----
-
-#### `GET /clinics/{clinicId}`
-**Roles:** `admin`, staff of that clinic
-
-Response `200 OK`: clinic object.
-Errors: `404 CLINIC_NOT_FOUND`
-
----
-
-#### `PATCH /clinics/{clinicId}`
-**Roles:** `admin`, `clinic_manager` (own clinic only)
-
-Request:
-```json
-{ "phone": "+205011112222" }
-```
-Response `200 OK`: updated clinic object.
-
----
-
-#### `DELETE /clinics/{clinicId}`
-**Roles:** `admin`
-
-Deactivates the branch; does not delete historical records.
-
-Response `204 No Content`
-Errors: `409 CLINIC_HAS_ACTIVE_APPOINTMENTS`
-
----
-
-## 9. Patients
-
-#### `GET /patients`
-**Roles:** `admin`, `clinic_manager`, `doctor`, `nurse`, `receptionist`, `accountant`
-
-Query params: `search` (name/phone/national_id), `status`, `gender` — plus standard pagination.
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "pat_7c3f21",
-      "full_name": "Laila Ibrahim",
-      "national_id": "29501150123456",
-      "phone": "+201234567890",
-      "email": "laila.ibrahim@example.com",
-      "date_of_birth": "1995-01-15",
-      "gender": "female",
-      "blood_type": "O+",
-      "allergies": ["Penicillin"],
-      "chronic_conditions": [],
-      "status": "active",
-      "created_at": "2025-11-02T08:30:00Z"
-    }
-  ],
-  "meta": { "page": 1, "limit": 20, "total": 386, "total_pages": 20 }
-}
-```
-
----
-
-#### `POST /patients`
-**Roles:** `admin`, `clinic_manager`, `receptionist`
-
-Request:
-```json
-{
-  "full_name": "Laila Ibrahim",
-  "national_id": "29501150123456",
-  "phone": "+201234567890",
-  "email": "laila.ibrahim@example.com",
-  "date_of_birth": "1995-01-15",
-  "gender": "female",
-  "address": "10 Talaat Harb St, Cairo",
-  "blood_type": "O+",
-  "allergies": ["Penicillin"],
-  "chronic_conditions": [],
-  "emergency_contact": { "name": "Omar Ibrahim", "phone": "+201234500000", "relation": "brother" }
-}
-```
-Response `201 Created`: created patient object (see [Patient model](#3-data-models)).
-Errors: `409 NATIONAL_ID_ALREADY_EXISTS`, `422 VALIDATION_ERROR`
-
----
-
-#### `GET /patients/{patientId}`
-**Roles:** `admin`, `clinic_manager`, `doctor`, `nurse`, `receptionist`, `accountant`, self (patient portal)
-
-Response `200 OK`: patient object.
-Errors: `404 PATIENT_NOT_FOUND`
-
----
-
-#### `PATCH /patients/{patientId}`
-**Roles:** `admin`, `clinic_manager`, `receptionist`
-
-Request (partial):
-```json
-{ "phone": "+201234567891", "allergies": ["Penicillin", "Latex"] }
-```
-Response `200 OK`: updated patient object.
-
----
-
-#### `DELETE /patients/{patientId}`
-**Roles:** `admin`, `clinic_manager`
-
-Archives the patient (soft delete — medical records are retained for legal compliance).
-
-Response `204 No Content`
-Errors: `409 PATIENT_HAS_UPCOMING_APPOINTMENTS`
-
----
-
-#### `GET /patients/{patientId}/medical-history`
-**Roles:** `admin`, `doctor`, `nurse` (own clinic), self
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "patient_id": "pat_7c3f21",
-    "consultations": [
+#### `GET /v1/reports/tenant-health`
+Returns real-time health scores (0-100) and churn risk classification for every tenant clinic.
+- **Roles:** `super_admin`
+- **Response `200 OK`:**
+  ```json
+  {
+    "success": true,
+    "data": [
       {
-        "id": "cst_3d8f42",
-        "date": "2026-07-20T10:00:00Z",
-        "doctor_name": "Dr. Ahmed Hassan",
-        "diagnosis": "Seasonal allergic rhinitis",
-        "prescriptions": ["rx_6a1c90"]
+        "tenant_id": "elshifa",
+        "tenant_name": "El Shifa Specialized Clinics",
+        "health_score": 94,
+        "risk_tier": "healthy",
+        "utilization": {
+          "doctors_used": 8,
+          "doctors_limit": 10,
+          "utilization_percent": 80.0
+        },
+        "reservations_30d": 340,
+        "open_tickets": 0,
+        "upsell_recommendations": []
+      },
+      {
+        "tenant_id": "alhayah",
+        "tenant_name": "Al Hayah Medical Center",
+        "health_score": 58,
+        "risk_tier": "at_risk",
+        "utilization": {
+          "doctors_used": 10,
+          "doctors_limit": 10,
+          "utilization_percent": 100.0
+        },
+        "reservations_30d": 12,
+        "open_tickets": 3,
+        "upsell_recommendations": [
+          "Clinic is at 100% doctor capacity. Recommend Extra Doctor Addon or Plan Upgrade."
+        ]
       }
     ]
-  },
-  "meta": { "page": 1, "limit": 20, "total": 4, "total_pages": 1 }
-}
-```
+  }
+  ```
 
 ---
 
-#### `GET /patients/{patientId}/appointments`
-**Roles:** `admin`, `clinic_manager`, `doctor`, `receptionist`, self
+### Server Infrastructure Health & Telemetry
 
-Query params: `status`, `date_from`, `date_to`.
+*Prefix: `/v1/server` · Roles: `super_admin`*
 
-Response `200 OK`: array of [Appointment](#3-data-models) objects, paginated.
-
----
-
-#### `GET /patients/{patientId}/invoices`
-**Roles:** `admin`, `clinic_manager`, `accountant`, self
-
-Response `200 OK`: array of [Invoice](#3-data-models) objects, paginated.
-
----
-
-## 10. Doctors & Specialties
-
-#### `GET /specialties`
-**Roles:** none (public / all roles)
-
-Returns all medical specialties available in the clinic platform along with active doctor counts. Used for building step-by-step patient booking forms (Step 1: Specialty ➔ Step 2: Doctor ➔ Step 3: Slot).
-
-Query params: `clinic_id` (optional, filter specialties available at a specific branch).
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "spc_derm",
-      "name": "Dermatology",
-      "arabic_name": "الجلدية والتناسلية",
-      "description": "Skin, hair, nail treatments and cosmetic procedures",
-      "active_doctors_count": 5
-    },
-    {
-      "id": "spc_card",
-      "name": "Cardiology",
-      "arabic_name": "أمراض القلب والأوعية الدموية",
-      "description": "Heart disease diagnosis and cardiovascular care",
-      "active_doctors_count": 3
-    },
-    {
-      "id": "spc_dent",
-      "name": "Dentistry",
-      "arabic_name": "طب الأسنان",
-      "description": "General dentistry, orthodontics, and oral surgery",
-      "active_doctors_count": 4
-    }
-  ]
-}
-```
+| Endpoint | Method | Description |
+|---|:---:|---|
+| `/v1/server/health` | `GET` | Live CPU %, load averages (1/5/15m), RAM metrics, and Disk storage usage |
+| `/v1/server/system-info` | `GET` | Hostname, OS kernel, uptime, PHP 8.5 & Laravel 13 engine versions |
+| `/v1/server/services` | `GET` | Service daemon status for Nginx, MySQL, Redis, Octane FrankenPHP, and Queue |
+| `/v1/server/processes` | `GET` | Top background processes sorted by CPU and RAM consumption |
+| `/v1/server/databases` | `GET` | List Central + all Tenant MySQL databases with row counts & size in MB |
+| `/v1/server/databases/{db}/tables`| `GET` | Table-level storage breakdown (data size, index size, collation, engine) |
+| `/v1/server/cache/clear` | `POST` | Purges framework configuration, route, view, and application cache |
+| `/v1/server/queue/restart` | `POST` | Broadcasts restart signal to background queue workers |
 
 ---
 
-#### `POST /specialties`
-**Roles:** `admin`
+## 5. Public & Guest Patient Booking (`/api/v1/public`)
 
-Creates a new medical specialty category.
+*No authentication required. Accessible from patient portal or clinic landing website.*
 
-Request:
-```json
-{
-  "name": "Neurology",
-  "arabic_name": "أمراض المخ والأعصاب",
-  "description": "Brain, spinal cord, and nervous system disorders"
-}
-```
-Response `201 Created`: created specialty object.
-Errors: `409 SPECIALTY_ALREADY_EXISTS`, `422 VALIDATION_ERROR`
+#### `GET /api/v1/public/clinics`
+List active physical branches with optional Haversine geolocation proximity filtering.
+- **Query Params:** `latitude`, `longitude`, `radius_km` (e.g. `?latitude=30.0444&longitude=31.2357&radius_km=15`).
+- **Response `200 OK`:** Array of branch locations with addresses, phone numbers, and calculated distance in km.
 
----
+#### `GET /api/v1/public/specialties`
+List medical specialties with active practicing doctor counts.
 
-#### `GET /doctors`
-**Roles:** all authenticated roles
+#### `GET /api/v1/public/doctors`
+List doctor roster.
+- **Query Params:** `specialty_id`, `clinic_id` (branch).
 
+#### `GET /api/v1/public/doctors/{id}/clinics`
+Retrieve branches where a doctor practices alongside branch-specific consultation fees.
 
-Query params: `specialty`, `clinic_id`, `status`.
+#### `GET /api/v1/public/time-slots`
+Find available open appointment slots.
+- **Query Params:** `doctor_id` (required), `clinic_id` (required), `date` (YYYY-MM-DD).
+- **Response `200 OK`:** Array of available `slot_` objects with `start_time` and `end_time`.
 
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "doc_9f1a20",
-      "user_id": "usr_d4e5f6",
-      "full_name": "Dr. Ahmed Hassan",
-      "specialty": "Dermatology",
-      "license_number": "EG-DERM-44821",
-      "clinic_ids": ["cli_a1b2c3"],
-      "consultation_fee": 350,
-      "status": "active"
-    }
-  ],
-  "meta": { "page": 1, "limit": 20, "total": 7, "total_pages": 1 }
-}
-```
-
----
-
-#### `POST /doctors`
-**Roles:** `admin`, `clinic_manager`
-
-Creates a doctor profile linked to an existing (or newly invited) staff user.
-
-Request:
-```json
-{
-  "user_id": "usr_d4e5f6",
-  "specialty": "Dermatology",
-  "license_number": "EG-DERM-44821",
-  "clinic_ids": ["cli_a1b2c3"],
-  "consultation_fee": 350,
-  "bio": "10+ years in clinical dermatology."
-}
-```
-Response `201 Created`: created doctor object.
-Errors: `409 LICENSE_ALREADY_REGISTERED`, `422 VALIDATION_ERROR`
-
----
-
-#### `GET /doctors/{doctorId}`
-**Roles:** all authenticated roles
-
-Response `200 OK`: doctor object.
-Errors: `404 DOCTOR_NOT_FOUND`
-
----
-
-#### `PATCH /doctors/{doctorId}`
-**Roles:** `admin`, `clinic_manager`, self
-
-Request (partial):
-```json
-{ "consultation_fee": 400, "status": "on_leave" }
-```
-Response `200 OK`: updated doctor object.
-
----
-
-#### `DELETE /doctors/{doctorId}`
-**Roles:** `admin`
-
-Response `204 No Content`
-Errors: `409 DOCTOR_HAS_UPCOMING_APPOINTMENTS`
-
----
-
-#### `GET /doctors/{doctorId}/schedule`
-**Roles:** all authenticated roles
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
+#### `POST /api/v1/public/reservations`
+Submit guest patient booking. Automatically registers/links patient profile, claims the time slot, and returns printable QR ticket payload.
+- **Request Body:**
+  ```json
+  {
+    "full_name": "Mohamed Ibrahim",
+    "national_id": "29010150102345",
+    "phone": "+201023456789",
+    "email": "mohamed.ibrahim@example.com",
+    "gender": "male",
+    "date_of_birth": "1990-10-15",
     "doctor_id": "doc_9f1a20",
-    "weekly_availability": [
-      { "day_of_week": "sunday", "start_time": "10:00", "end_time": "18:00" },
-      { "day_of_week": "tuesday", "start_time": "10:00", "end_time": "18:00" }
-    ],
-    "exceptions": [
-      { "date": "2026-08-20", "is_available": false, "reason": "Conference" }
-    ]
+    "clinic_id": "cli_a1b2c3",
+    "time_slot_id": "slot_8c2d15",
+    "reservation_date": "2026-09-10",
+    "reservation_type": "consultation",
+    "notes": "First visit for general dermatology checkup."
   }
-}
-```
-
----
-
-#### `PUT /doctors/{doctorId}/schedule`
-**Roles:** `admin`, `clinic_manager`, self
-
-Replaces the full weekly availability set.
-
-Request:
-```json
-{
-  "weekly_availability": [
-    { "day_of_week": "sunday", "start_time": "10:00", "end_time": "18:00" },
-    { "day_of_week": "monday", "start_time": "10:00", "end_time": "16:00" }
-  ]
-}
-```
-Response `200 OK`: updated schedule object.
-Errors: `400 INVALID_TIME_RANGE`
-
----
-
-#### `GET /doctors/{doctorId}/appointments`
-**Roles:** `admin`, `clinic_manager`, `receptionist`, self
-
-Query params: `date_from`, `date_to`, `status`.
-
-Response `200 OK`: array of [Appointment](#3-data-models) objects, paginated.
-
----
-
-## 11. Appointments
-
-#### `GET /appointments`
-**Roles:** `admin`, `clinic_manager`, `doctor`, `nurse`, `receptionist`; patients see only their own
-
-Query params: `patient_id`, `doctor_id`, `clinic_id`, `status`, `date_from`, `date_to`.
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "apt_5e2b18",
-      "patient_id": "pat_7c3f21",
-      "doctor_id": "doc_9f1a20",
-      "clinic_id": "cli_a1b2c3",
-      "scheduled_at": "2026-08-15T11:30:00Z",
-      "duration_minutes": 30,
-      "type": "consultation",
-      "status": "scheduled",
-      "reason": "Follow-up on skin rash",
-      "created_by": "usr_7b1e90"
-    }
-  ],
-  "meta": { "page": 1, "limit": 20, "total": 58, "total_pages": 3 }
-}
-```
-
----
-
-#### `POST /appointments`
-**Roles:** `admin`, `clinic_manager`, `receptionist`; `patient` (self-booking on their own record)
-
-Request:
-```json
-{
-  "patient_id": "pat_7c3f21",
-  "doctor_id": "doc_9f1a20",
-  "clinic_id": "cli_a1b2c3",
-  "scheduled_at": "2026-08-15T11:30:00Z",
-  "duration_minutes": 30,
-  "type": "consultation",
-  "reason": "Follow-up on skin rash"
-}
-```
-Response `201 Created`: created appointment object, `status: "scheduled"`.
-Errors: `409 SLOT_UNAVAILABLE`, `422 VALIDATION_ERROR`
-
----
-
-#### `GET /appointments/{appointmentId}`
-**Roles:** `admin`, `clinic_manager`, `doctor`, `nurse`, `receptionist`, involved patient
-
-Response `200 OK`: appointment object.
-Errors: `404 APPOINTMENT_NOT_FOUND`
-
----
-
-#### `PATCH /appointments/{appointmentId}`
-**Roles:** `admin`, `clinic_manager`, `receptionist`
-
-Used to reschedule or edit reason/notes. Changing `scheduled_at` re-validates slot availability.
-
-Request:
-```json
-{ "scheduled_at": "2026-08-16T09:00:00Z" }
-```
-Response `200 OK`: updated appointment object.
-Errors: `409 SLOT_UNAVAILABLE`
-
----
-
-#### `DELETE /appointments/{appointmentId}`
-**Roles:** `admin`, `clinic_manager`, `receptionist`, involved patient
-
-Cancels the appointment (sets `status: "cancelled"`; record is retained, not hard-deleted).
-
-Response `204 No Content`
-Errors: `409 APPOINTMENT_ALREADY_COMPLETED`
-
----
-
-#### `PATCH /appointments/{appointmentId}/check-in`
-**Roles:** `admin`, `clinic_manager`, `receptionist`, `nurse`
-
-Request: *(empty body)*
-Response `200 OK`:
-```json
-{ "success": true, "data": { "id": "apt_5e2b18", "status": "checked_in", "checked_in_at": "2026-08-15T11:25:00Z" } }
-```
-Errors: `409 INVALID_STATUS_TRANSITION`
-
----
-
-#### `PATCH /appointments/{appointmentId}/status`
-**Roles:** `admin`, `clinic_manager`, `doctor`, `receptionist`
-
-Request:
-```json
-{ "status": "no_show" }
-```
-Valid transitions: `scheduled → confirmed → checked_in → in_progress → completed`, or any state `→ cancelled` / `→ no_show` (only from `scheduled`/`confirmed`).
-
-Response `200 OK`: updated appointment object.
-Errors: `409 INVALID_STATUS_TRANSITION`
-
----
-
-#### `GET /appointments/available-slots`
-**Roles:** `admin`, `clinic_manager`, `receptionist`, `doctor`, `patient`
-
-Query params (required): `doctor_id`, `date`. Optional: `duration_minutes` (default 30).
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "doctor_id": "doc_9f1a20",
-    "date": "2026-08-15",
-    "slots": ["10:00", "10:30", "11:00", "14:00", "14:30"]
-  }
-}
-```
-
----
-
-#### `GET /appointments/{appointmentId}/qr-code`
-**Roles:** `admin`, `clinic_manager`, `receptionist`, `doctor`, `patient` (self)
-
-Generates or retrieves a secure QR Code payload and image URL for an appointment. The patient receives this QR code to present upon arrival.
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "appointment_id": "apt_5e2b18",
-    "patient_name": "Laila Ibrahim",
-    "qr_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.qr_apt_5e2b18_token_sample",
-    "qr_image_url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAAD...",
-    "expires_at": "2026-08-15T23:59:59Z"
-  }
-}
-```
-Errors: `404 APPOINTMENT_NOT_FOUND`
-
----
-
-#### `POST /appointments/check-in/scan-qr`
-**Roles:** `admin`, `clinic_manager`, `receptionist`, `nurse`
-
-Scans and validates a patient's QR code via reception/kiosk camera. Automatically updates appointment status to `checked_in` and logs arrival time without manual dashboard lookup.
-
-Request:
-```json
-{
-  "qr_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.qr_apt_5e2b18_token_sample"
-}
-```
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "appointment_id": "apt_5e2b18",
-    "patient_id": "pat_7c3f21",
-    "patient_name": "Laila Ibrahim",
-    "doctor_name": "Dr. Ahmed Hassan",
-    "status": "checked_in",
-    "checked_in_at": "2026-08-15T11:24:12Z",
-    "message": "Patient Laila Ibrahim successfully checked in automatically via QR scan."
-  }
-}
-```
-Errors: `400 INVALID_OR_EXPIRED_QR_TOKEN`, `409 APPOINTMENT_ALREADY_CHECKED_IN`
-
-
----
-
-## 12. Consultations (Medical Records)
-
-#### `GET /consultations`
-**Roles:** `admin`, `doctor`, `nurse` (read-only)
-
-Query params: `patient_id`, `doctor_id`, `date_from`, `date_to`.
-
-Response `200 OK`: array of consultation objects (see [model](#3-data-models)), paginated.
-
----
-
-#### `POST /consultations`
-**Roles:** `doctor`
-
-Created against a `checked_in` or `in_progress` appointment; automatically transitions the appointment to `completed` once submitted.
-
-Request:
-```json
-{
-  "appointment_id": "apt_5e2b18",
-  "chief_complaint": "Recurring itchy rash on forearm",
-  "diagnosis": "Contact dermatitis",
-  "vitals": {
-    "blood_pressure": "120/80",
-    "heart_rate": 72,
-    "temperature_c": 36.8,
-    "weight_kg": 68,
-    "height_cm": 170
-  },
-  "notes": "Advised to avoid the suspected detergent brand.",
-  "follow_up_required": true,
-  "follow_up_date": "2026-08-29"
-}
-```
-Response `201 Created`: created consultation object.
-Errors: `409 APPOINTMENT_NOT_CHECKED_IN`, `422 VALIDATION_ERROR`
-
----
-
-#### `GET /consultations/{consultationId}`
-**Roles:** `admin`, `doctor`, `nurse`, involved patient
-
-Response `200 OK`: consultation object, with nested `prescriptions: [rx_...]` ids.
-Errors: `404 CONSULTATION_NOT_FOUND`
-
----
-
-#### `PATCH /consultations/{consultationId}`
-**Roles:** `admin`, the authoring `doctor` (within 24 hours of creation)
-
-Request (partial):
-```json
-{ "notes": "Updated: symptoms improved after avoiding the detergent." }
-```
-Response `200 OK`: updated consultation object.
-Errors: `403 EDIT_WINDOW_EXPIRED`
-
----
-
-## 13. Prescriptions
-
-#### `GET /prescriptions`
-**Roles:** `admin`, `doctor`, `nurse`; involved patient sees own
-
-Query params: `patient_id`, `doctor_id`, `status`.
-
-Response `200 OK`: array of prescription objects, paginated.
-
----
-
-#### `POST /prescriptions`
-**Roles:** `doctor`
-
-Request:
-```json
-{
-  "consultation_id": "cst_3d8f42",
-  "medications": [
-    {
-      "inventory_item_id": "itm_1a9c77",
-      "name": "Cetirizine 10mg",
-      "dosage": "1 tablet",
-      "frequency": "once daily",
-      "duration_days": 10,
-      "instructions": "Take at night."
-    }
-  ]
-}
-```
-Response `201 Created`: created prescription object, `status: "active"`.
-Errors: `422 VALIDATION_ERROR`
-
----
-
-#### `GET /prescriptions/{prescriptionId}`
-**Roles:** `admin`, `doctor`, `nurse`, involved patient
-
-Response `200 OK`: prescription object.
-Errors: `404 PRESCRIPTION_NOT_FOUND`
-
----
-
-#### `PATCH /prescriptions/{prescriptionId}`
-**Roles:** `admin`, the authoring `doctor`
-
-Request:
-```json
-{ "status": "fulfilled" }
-```
-Response `200 OK`: updated prescription object.
-
----
-
-#### `DELETE /prescriptions/{prescriptionId}`
-**Roles:** `admin`, the authoring `doctor`
-
-Sets `status: "cancelled"` (not hard-deleted — required for medical audit trail).
-
-Response `204 No Content`
-
----
-
-## 14. Billing & Invoices
-
-#### `GET /invoices`
-**Roles:** `admin`, `clinic_manager`, `accountant`, `receptionist`; involved patient sees own
-
-Query params: `patient_id`, `status`, `date_from`, `date_to`.
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "inv_2f7e11",
-      "patient_id": "pat_7c3f21",
-      "appointment_id": "apt_5e2b18",
-      "clinic_id": "cli_a1b2c3",
-      "items": [
-        { "description": "Dermatology consultation", "quantity": 1, "unit_price": 350, "total": 350 }
-      ],
-      "subtotal": 350,
-      "discount": 0,
-      "tax": 0,
-      "total": 350,
-      "amount_paid": 0,
-      "balance_due": 350,
+  ```
+- **Response `201 Created`:**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "id": "res_5e2b18",
       "status": "pending",
-      "due_date": "2026-08-22"
-    }
-  ],
-  "meta": { "page": 1, "limit": 20, "total": 92, "total_pages": 5 }
-}
-```
-
----
-
-#### `POST /invoices`
-**Roles:** `admin`, `clinic_manager`, `receptionist`, `accountant`
-
-Request:
-```json
-{
-  "patient_id": "pat_7c3f21",
-  "appointment_id": "apt_5e2b18",
-  "clinic_id": "cli_a1b2c3",
-  "items": [
-    { "description": "Dermatology consultation", "quantity": 1, "unit_price": 350 }
-  ],
-  "discount": 0,
-  "tax": 0,
-  "due_date": "2026-08-22"
-}
-```
-Response `201 Created`: created invoice object, `status: "pending"`, `total` computed server-side.
-Errors: `422 VALIDATION_ERROR`
-
----
-
-#### `GET /invoices/{invoiceId}`
-**Roles:** `admin`, `clinic_manager`, `accountant`, `receptionist`, involved patient
-
-Response `200 OK`: invoice object.
-Errors: `404 INVOICE_NOT_FOUND`
-
----
-
-#### `PATCH /invoices/{invoiceId}`
-**Roles:** `admin`, `clinic_manager`, `accountant`
-
-Only invoices in `draft` status can be edited.
-
-Request:
-```json
-{ "discount": 50 }
-```
-Response `200 OK`: updated invoice object.
-Errors: `409 INVOICE_NOT_EDITABLE`
-
----
-
-#### `DELETE /invoices/{invoiceId}`
-**Roles:** `admin`, `clinic_manager`
-
-Voids the invoice (sets `status: "void"`; retained for audit).
-
-Response `204 No Content`
-Errors: `409 INVOICE_HAS_PAYMENTS`
-
----
-
-#### `POST /invoices/{invoiceId}/payments`
-**Roles:** `admin`, `clinic_manager`, `receptionist`, `accountant`
-
-Request:
-```json
-{
-  "amount": 350,
-  "method": "card",
-  "reference_number": "TXN-8823410"
-}
-```
-Response `201 Created`:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "pay_8b4d33",
-    "invoice_id": "inv_2f7e11",
-    "amount": 350,
-    "method": "card",
-    "reference_number": "TXN-8823410",
-    "received_by": "usr_7b1e90",
-    "paid_at": "2026-08-12T12:05:00Z"
-  }
-}
-```
-The invoice's `amount_paid`, `balance_due`, and `status` (→ `paid` or `partially_paid`) update automatically.
-
-Errors: `409 OVERPAYMENT_NOT_ALLOWED`, `422 VALIDATION_ERROR`
-
----
-
-#### `GET /invoices/{invoiceId}/payments`
-**Roles:** `admin`, `clinic_manager`, `accountant`, `receptionist`, involved patient
-
-Response `200 OK`: array of [Payment](#3-data-models) objects.
-
----
-
-#### `POST /invoices/{invoiceId}/refund`
-**Roles:** `admin`, `clinic_manager`
-
-Request:
-```json
-{
-  "payment_id": "pay_8b4d33",
-  "amount": 350,
-  "reason": "Appointment cancelled after payment"
-}
-```
-Response `201 Created`:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "rfd_5c1a02",
-    "payment_id": "pay_8b4d33",
-    "amount": 350,
-    "reason": "Appointment cancelled after payment",
-    "status": "processed",
-    "processed_at": "2026-08-12T13:00:00Z"
-  }
-}
-```
-Errors: `409 REFUND_EXCEEDS_PAYMENT`
-
----
-
-## 15. Inventory
-
-#### `GET /inventory/items`
-**Roles:** `admin`, `clinic_manager`, `doctor`, `nurse`
-
-Query params: `category`, `clinic_id`, `search`.
-
-Response `200 OK`: array of [InventoryItem](#3-data-models) objects, paginated.
-
----
-
-#### `POST /inventory/items`
-**Roles:** `admin`, `clinic_manager`
-
-Request:
-```json
-{
-  "name": "Cetirizine 10mg",
-  "category": "medicine",
-  "unit": "box",
-  "quantity_in_stock": 120,
-  "reorder_level": 20,
-  "unit_cost": 45,
-  "expiry_date": "2027-03-01",
-  "clinic_id": "cli_a1b2c3"
-}
-```
-Response `201 Created`: created inventory item object.
-
----
-
-#### `GET /inventory/items/{itemId}`
-**Roles:** `admin`, `clinic_manager`, `doctor`, `nurse`
-
-Response `200 OK`: inventory item object.
-Errors: `404 ITEM_NOT_FOUND`
-
----
-
-#### `PATCH /inventory/items/{itemId}`
-**Roles:** `admin`, `clinic_manager`
-
-Request (partial):
-```json
-{ "reorder_level": 30, "unit_cost": 48 }
-```
-Response `200 OK`: updated inventory item object.
-
----
-
-#### `DELETE /inventory/items/{itemId}`
-**Roles:** `admin`, `clinic_manager`
-
-Response `204 No Content`
-Errors: `409 ITEM_REFERENCED_BY_ACTIVE_PRESCRIPTIONS`
-
----
-
-#### `POST /inventory/items/{itemId}/stock-adjustments`
-**Roles:** `admin`, `clinic_manager`, `nurse`
-
-Request:
-```json
-{
-  "change_quantity": -5,
-  "reason": "usage"
-}
-```
-Response `201 Created`:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "adj_4e9b12",
-    "inventory_item_id": "itm_1a9c77",
-    "change_quantity": -5,
-    "reason": "usage",
-    "adjusted_by": "usr_7b1e90",
-    "resulting_quantity": 115,
-    "created_at": "2026-08-12T12:30:00Z"
-  }
-}
-```
-Errors: `409 INSUFFICIENT_STOCK`
-
----
-
-#### `GET /inventory/low-stock`
-**Roles:** `admin`, `clinic_manager`
-
-Response `200 OK`: array of items where `quantity_in_stock <= reorder_level`, paginated.
-
----
-
-## 16. Notifications
-
-#### `GET /notifications`
-**Roles:** `admin`, `clinic_manager`; patients see own
-
-Query params: `recipient_id`, `channel`, `status`.
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "ntf_4c2e19",
-      "recipient_type": "patient",
-      "recipient_id": "pat_7c3f21",
-      "channel": "whatsapp",
-      "template_key": "appointment_reminder_24h",
-      "status": "sent",
-      "scheduled_at": "2026-08-14T11:30:00Z",
-      "sent_at": "2026-08-14T11:30:05Z"
-    }
-  ],
-  "meta": { "page": 1, "limit": 20, "total": 210, "total_pages": 11 }
-}
-```
-
----
-
-#### `POST /notifications/send`
-**Roles:** `admin`, `clinic_manager`, `receptionist`
-
-Manually triggers a notification outside the automated reminder schedule.
-
-Request:
-```json
-{
-  "recipient_type": "patient",
-  "recipient_id": "pat_7c3f21",
-  "channel": "sms",
-  "template_key": "invoice_payment_due",
-  "context": { "invoice_id": "inv_2f7e11" }
-}
-```
-Response `201 Created`: created notification object, `status: "queued"`.
-Errors: `422 UNKNOWN_TEMPLATE_KEY`
-
----
-
-#### `PATCH /notifications/{notificationId}/read`
-**Roles:** involved patient (patient portal)
-
-Request: *(empty body)*
-Response `200 OK`:
-```json
-{ "success": true, "data": { "id": "ntf_4c2e19", "read_at": "2026-08-14T12:00:00Z" } }
-```
-
----
-
-## 17. Reports & Analytics
-
-All report endpoints share these query params unless noted: `date_from`, `date_to`, `clinic_id`.
-
-**Roles for this entire module:** `admin`, `clinic_manager`, `accountant` (financial reports only — `no-show-rate`, `appointments-summary`, `doctor-performance`, `patients-growth` are also visible to `clinic_manager`).
-
-#### `GET /reports/revenue`
-**Roles:** `admin`, `clinic_manager`, `accountant`
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "period": { "from": "2026-07-01", "to": "2026-07-31" },
-    "total_revenue": 184500,
-    "total_collected": 176200,
-    "total_outstanding": 8300,
-    "breakdown_by_day": [
-      { "date": "2026-07-01", "revenue": 6200 }
-    ]
-  }
-}
-```
-
----
-
-#### `GET /reports/appointments-summary`
-**Roles:** `admin`, `clinic_manager`
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "total_appointments": 412,
-    "by_status": { "completed": 340, "cancelled": 28, "no_show": 22, "scheduled": 22 },
-    "by_doctor": [
-      { "doctor_id": "doc_9f1a20", "doctor_name": "Dr. Ahmed Hassan", "count": 96 }
-    ]
-  }
-}
-```
-
----
-
-#### `GET /reports/no-show-rate`
-**Roles:** `admin`, `clinic_manager`
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "no_show_rate_percent": 5.3,
-    "total_appointments": 412,
-    "no_shows": 22,
-    "trend": [
-      { "month": "2026-06", "rate_percent": 6.1 },
-      { "month": "2026-07", "rate_percent": 5.3 }
-    ]
-  }
-}
-```
-
----
-
-#### `GET /reports/doctor-performance`
-**Roles:** `admin`, `clinic_manager`
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "doctor_id": "doc_9f1a20",
+      "reservation_date": "2026-09-10",
       "doctor_name": "Dr. Ahmed Hassan",
-      "appointments_completed": 89,
-      "average_consultation_minutes": 24,
-      "revenue_generated": 31150,
-      "patient_satisfaction_score": 4.7
+      "clinic_name": "Nasr City Branch",
+      "time_slot": "10:30 - 11:00",
+      "qr_code_token": "qr_tok_9b2e8a11cf8842",
+      "qr_ticket_payload": "https://elshifa.delta-clinics.com/ticket/res_5e2b18?token=qr_tok_9b2e8a11cf8842"
     }
-  ]
-}
-```
+  }
+  ```
+
+#### `PATCH /api/v1/public/reservations/{id}/status`
+Update reservation lifecycle state from reception dashboard (`accepted`, `confirmed`, `completed`, `cancelled`).
 
 ---
 
-#### `GET /reports/patients-growth`
-**Roles:** `admin`, `clinic_manager`
+## 6. Tenant Clinic Core Endpoints (`/api/v1`)
 
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": {
-    "new_patients_total": 58,
-    "by_month": [
-      { "month": "2026-06", "new_patients": 26 },
-      { "month": "2026-07", "new_patients": 32 }
+### Tenant Auth & User Profile
+
+#### `POST /api/v1/auth/login`
+- **Roles:** `public`
+- **Request Body:** `{ "email": "admin@elshifa.com", "password": "password123" }`
+- **Response `200 OK`:** Tenant `access_token` (15 min) and `user` object.
+
+#### `POST /api/v1/auth/refresh`
+Rotate short-lived access token.
+- **Request Body:** `{ "refresh_token": "ref_8a1c90..." }`
+
+#### `GET /api/v1/auth/me`
+Retrieve currently authenticated tenant user, assigned roles, permissions, and branch associations.
+
+---
+
+### Clinic Settings, Branding & Theming
+
+#### `GET /api/v1/settings`
+Retrieve tenant branding configuration and theme colors.
+- **Roles:** `public` / `authenticated`
+- **Response `200 OK`:**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "tenant_name": "El Shifa Clinics",
+      "logo_url": "https://storage.delta-clinics.com/tenants/elshifa/logo.png",
+      "phone": "+20224567890",
+      "email": "info@elshifa.com",
+      "address": "15 Abbas El Akkad, Nasr City, Cairo",
+      "timezone": "Africa/Cairo",
+      "currency": "EGP",
+      "primary_color": "#059669",
+      "secondary_color": "#047857",
+      "accent_color": "#10b981",
+      "accent_soft_color": "#d1fae5",
+      "bg_color": "#f8fafc",
+      "card_bg_color": "#ffffff",
+      "theme_preset_id": "emerald"
+    }
+  }
+  ```
+
+#### `PATCH /api/v1/settings` or `POST /api/v1/settings`
+Update clinic branding, theme presets (Emerald, Sapphire, Cyan, Teal, Violet, Ruby, Custom), and upload clinic logo.
+- **Roles:** `admin`, `clinic_manager`
+
+---
+
+### Tenant Subscription Payments & Addons
+
+#### `GET /api/v1/subscription-requests`
+List subscription payment receipts submitted by the clinic.
+- **Roles:** `admin`, `clinic_manager`
+
+#### `POST /api/v1/subscription-requests`
+Submit an offline payment receipt for subscription renewal, plan upgrade, or addon capacity.
+- **Roles:** `admin`, `clinic_manager`
+- **Request Body:**
+  ```json
+  {
+    "plan_id": "pln_professional",
+    "type": "plan_upgrade",
+    "amount": 1200,
+    "payment_method": "instapay",
+    "transaction_reference": "INSTA-992144810",
+    "receipt_url": "https://storage.delta-clinics.com/receipts/rec_81239.jpg",
+    "notes": "Upgraded from Starter to Professional via Instapay."
+  }
+  ```
+
+---
+
+### Tenant Support Chat
+
+#### `GET /api/v1/support-tickets`
+List support tickets opened by the clinic.
+- **Roles:** `admin`, `clinic_manager`
+
+#### `POST /api/v1/support-tickets`
+Open a new support ticket with DEVesters System Support.
+- **Roles:** `admin`, `clinic_manager`
+- **Request Body:**
+  ```json
+  {
+    "subject": "Invoicing printer integration issue",
+    "priority": "high",
+    "message": "Thermal receipts are truncating patient names on branch 2.",
+    "attachment": null
+  }
+  ```
+
+#### `POST /api/v1/support-tickets/{id}/messages`
+Send a reply message inside a ticket thread with file attachment support.
+- **Roles:** `admin`, `clinic_manager`
+
+---
+
+### Branches & Staff Management
+
+#### `GET /api/v1/branches` & `POST /api/v1/branches`
+Manage physical clinic branches. Creating a new branch enforces `TenantPlanFeatureGuard::ensureCanAddBranch`.
+- **Roles:** `admin`, `clinic_manager`
+
+#### `GET /api/v1/users` & `POST /api/v1/users`
+Manage staff user accounts (Doctors, Receptionists, Nurses, Accountants). Creating staff enforces `TenantPlanFeatureGuard::ensureCanAddStaff`.
+- **Roles:** `admin`, `clinic_manager`
+
+#### `PATCH /api/v1/users/{id}/status`
+Toggle staff member active state.
+- **Roles:** `admin`, `clinic_manager`
+
+---
+
+### Doctors, Specialties & Shifts
+
+#### `GET /api/v1/specialties` & `POST /api/v1/specialties`
+Specialties catalog. Creating specialty enforces `TenantPlanFeatureGuard::ensureCanAddSpecialty`.
+- **Roles:** `admin`, `clinic_manager`
+
+#### `GET /api/v1/doctors` & `POST /api/v1/doctors`
+Doctor profiles CRUD. Creating doctor enforces `TenantPlanFeatureGuard::ensureCanAddDoctor`.
+- **Roles:** `admin`, `clinic_manager`
+
+#### `POST /api/v1/doctors/{id}/clinics`
+Link doctor to multiple branches with custom consultation prices per branch.
+- **Roles:** `admin`, `clinic_manager`
+- **Request Body:**
+  ```json
+  {
+    "clinics": [
+      { "clinic_id": "cli_nasr_city", "price": 400 },
+      { "clinic_id": "cli_maadi", "price": 500 }
     ]
   }
-}
-```
+  ```
 
----
-
-## 18. Audit Logs
-
-#### `GET /audit-logs`
-**Roles:** `admin`
-
-Query params: `actor_id`, `resource_type`, `resource_id`, `date_from`, `date_to`.
-
-Response `200 OK`:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "log_9e3f01",
-      "actor_id": "usr_7b1e90",
-      "action": "invoice.payment_recorded",
-      "resource_type": "invoice",
-      "resource_id": "inv_2f7e11",
-      "changes": { "amount_paid": { "from": 0, "to": 350 } },
-      "ip_address": "41.238.12.4",
-      "created_at": "2026-08-12T12:05:03Z"
-    }
-  ],
-  "meta": { "page": 1, "limit": 20, "total": 1840, "total_pages": 92 }
-}
-```
-
----
-
-#### `GET /audit-logs/{logId}`
-**Roles:** `admin`
-
-Response `200 OK`: single audit log entry.
-Errors: `404 LOG_NOT_FOUND`
-
----
-
-## 9. Error Handling
-
-### Global error codes
-
-| HTTP Status | Code | Meaning | Fix |
-|---|---|---|---|
-| 400 | `MALFORMED_REQUEST` | Request body isn't valid JSON or is missing entirely | Check `Content-Type` header and body syntax |
-| 401 | `UNAUTHENTICATED` | Missing or invalid access token | Re-authenticate via `/auth/login` or `/auth/refresh` |
-| 401 | `INVALID_CREDENTIALS` | Wrong email/password on login | Verify credentials |
-| 403 | `FORBIDDEN` | Token is valid but the role lacks permission for this action | Confirm the user's role and required permission |
-| 404 | `RESOURCE_NOT_FOUND` | The requested `{id}` doesn't exist or isn't in scope for this user's clinic | Confirm the ID and that the resource belongs to `X-Clinic-Id` |
-| 409 | `CONFLICT` | Request conflicts with current resource state (double-booked slot, duplicate ID, invalid status transition) | Read `error.details` for the specific conflict and adjust |
-| 422 | `VALIDATION_ERROR` | Body failed schema validation | Read `error.details` for the field-level errors |
-| 429 | `RATE_LIMITED` | Too many requests | Respect the `Retry-After` header before retrying |
-| 500 | `INTERNAL_ERROR` | Unexpected server fault | Retry with backoff; contact support if it persists |
-
-### Validation error shape
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "One or more fields are invalid.",
-    "details": [
-      { "field": "national_id", "issue": "must be exactly 14 digits" },
-      { "field": "date_of_birth", "issue": "must be a valid past date" }
+#### `PUT /api/v1/doctors/{id}/schedule`
+Synchronize doctor weekly shift schedule.
+- **Roles:** `admin`, `clinic_manager`, the involved `doctor`
+- **Request Body:**
+  ```json
+  {
+    "schedules": [
+      {
+        "clinic_id": "cli_nasr_city",
+        "day_of_week": 1,
+        "start_time": "10:00",
+        "end_time": "16:00",
+        "slot_duration_minutes": 30,
+        "is_available": true
+      },
+      {
+        "clinic_id": "cli_maadi",
+        "day_of_week": 3,
+        "start_time": "14:00",
+        "end_time": "20:00",
+        "slot_duration_minutes": 30,
+        "is_available": true
+      }
     ]
   }
-}
-```
-
-### Retry guidance
-- Retryable: `429`, `500`, `503` — use exponential backoff starting at 1s, capped at 30s.
-- Not retryable: `400`, `401`, `403`, `404`, `409`, `422` — fix the request before resending.
+  ```
 
 ---
 
-## Notes for the implementing team
+### Appointments, Reservations & Chat
 
-- Every write to `patients`, `consultations`, `prescriptions`, and `invoices` must produce an [audit log](#18-audit-logs) entry — this is a compliance requirement given the sensitivity of medical and billing data, not an optional feature.
-- `national_id` and `license_number` uniqueness should be enforced at the database level, not just in application code, to avoid race conditions under concurrent registration.
-- Consider soft-delete (status flags) over hard deletes across every clinical and financial table — this contract assumes that pattern throughout (`archived`, `void`, `cancelled` states rather than `DELETE FROM`).
+#### `GET /api/v1/reservations`
+List reservations with date, status, doctor, branch, and patient filters.
+- **Roles:** `admin`, `clinic_manager`, `receptionist`, `doctor`, `nurse`
+
+#### `POST /api/v1/reservations`
+Book a reservation internally by reception staff.
+- **Roles:** `admin`, `clinic_manager`, `receptionist`
+
+#### `PATCH /api/v1/reservations/{id}/accept` & `PATCH /api/v1/reservations/{id}/cancel`
+Accept or cancel appointment.
+- **Roles:** `admin`, `clinic_manager`, `receptionist`, `doctor`
+
+#### `GET /api/v1/reservations/{id}/messages` & `POST /api/v1/reservations/{id}/messages`
+Two-way chat thread attached directly to a booking (e.g. pre-consultation instructions, medical inquiries).
+- **Roles:** `admin`, `receptionist`, assigned `doctor`, involved `patient`
+
+---
+
+### Electronic Medical Records (EMR) & Prescriptions
+
+#### `GET /api/v1/consultations` & `POST /api/v1/consultations`
+Record patient consultation, chief complaint, ICD diagnosis, vital signs, and clinical notes.
+- **Roles:** `doctor` (Author), `nurse` (Vitals), `admin` (Read)
+
+#### `GET /api/v1/prescriptions` & `POST /api/v1/prescriptions`
+Generate e-prescriptions with itemized medications, dosage, frequency, and pharmacy inventory link.
+- **Roles:** `doctor` (Author), `nurse` / `receptionist` (Read), `patient` (Own)
+
+---
+
+### Billing, Invoicing & Expenses
+
+#### `GET /api/v1/invoices` & `POST /api/v1/invoices`
+Generate patient invoices with line items, discount, and tax calculations.
+- **Roles:** `admin`, `clinic_manager`, `accountant`, `receptionist`
+
+#### `POST /api/v1/invoices/{id}/payments`
+Record invoice settlement (Supports partial and full payments across `cash`, `credit_card`, `insurance`, `bank_transfer`, `instapay`, `vodafone_cash`).
+- **Roles:** `admin`, `clinic_manager`, `accountant`, `receptionist`
+
+#### `POST /api/v1/invoices/{id}/refund`
+Process payment refund with mandatory reason.
+- **Roles:** `admin`, `clinic_manager`, `accountant`
+
+#### `GET /api/v1/reports/financial` or `GET /api/v1/clinics/report`
+Comprehensive financial statement: Gross revenue, expenses, net profit, outstanding balances, status breakdown, and payment method summaries.
+- **Roles:** `admin`, `clinic_manager`, `accountant`
+
+---
+
+### Inventory & Stock Adjustments
+
+#### `GET /api/v1/inventory` & `POST /api/v1/inventory`
+Medical supplies & pharmacy catalog.
+- **Roles:** `admin`, `clinic_manager`, `pharmacist`, `inventory_manager`, `nurse`
+
+#### `GET /api/v1/inventory/low-stock`
+Filter items where current stock <= reorder threshold.
+
+#### `POST /api/v1/inventory/{id}/adjustments`
+Atomic inventory adjustment with audit log.
+- **Roles:** `admin`, `clinic_manager`, `nurse`, `pharmacist`
+- **Request Body:**
+  ```json
+  {
+    "quantity": -2,
+    "type": "dispensing",
+    "notes": "Dispensed for procedure in Room 3."
+  }
+  ```
+  *(Types: `addition`, `deduction`, `dispensing`, `damage`, `expired`, `correction`).*
+
+---
+
+### Asynchronous Queued Notifications & WebSockets
+
+#### `GET /api/v1/notifications`
+List authenticated user's notifications.
+
+#### `GET /api/v1/notifications/unread-count`
+Retrieve badge count of unread notifications.
+
+#### `POST /api/v1/notifications/mark-all-read`
+Mark all user notifications as read.
+
+#### `POST /api/v1/notifications`
+Dispatch custom notification (Dispatched via `SendNotificationJob` off-lifecycle queue).
+- **Roles:** `admin`, `clinic_manager`
+
+#### Real-Time WebSocket Channels (Laravel Reverb)
+- Private User Channel: `App.Models.User.{tenant_id}.{user_id}` (Instant booking alerts, reminders)
+- Private Ticket Channel: `Support.Ticket.{id}` & `SystemAdmin.Support.Ticket.{id}` (Support desk live chat)
+- Private Reservation Chat Channel: `Reservation.Chat.{id}` (In-booking live messages)
+
+---
+
+## 7. Error Codes & Resource Guards
+
+| HTTP Status | Error Code | Description | Corrective Action |
+|:---:|---|---|---|
+| `400` | `MALFORMED_REQUEST` | Invalid JSON syntax or missing required headers | Validate JSON payload and `Content-Type` |
+| `401` | `UNAUTHENTICATED` | Bearer token is missing, expired, or invalid | Re-authenticate via `/auth/login` or refresh token |
+| `403` | `FORBIDDEN` | Authenticated user lacks permission for this action | Check user's assigned RBAC role |
+| `403` | `PLAN_LIMIT_EXCEEDED` | Tenant has reached plan limits (`max_doctors`, `max_branches`, etc.) | Submit subscription upgrade or purchase add-on |
+| `403` | `TENANT_SUSPENDED` | Tenant account is inactive or subscription is expired | Renew subscription via `/subscription-requests` |
+| `404` | `TENANT_NOT_FOUND` | Specified subdomain or `X-Tenant` does not exist | Verify clinic URL or tenant slug |
+| `404` | `RESOURCE_NOT_FOUND` | Requested entity ID does not exist in current tenant DB | Verify ID prefix and scope |
+| `409` | `SLOT_ALREADY_BOOKED` | Target time slot has already been claimed | Refresh `/public/time-slots` and select another time |
+| `409` | `OVERPAYMENT_NOT_ALLOWED` | Payment amount exceeds invoice balance due | Adjust payment amount |
+| `422` | `VALIDATION_ERROR` | Request failed schema validation rules | Inspect `error.details` for field-specific errors |
+| `429` | `RATE_LIMITED` | Rate limit threshold exceeded | Respect `Retry-After` response header |
+| `500` | `INTERNAL_SERVER_ERROR` | Unhandled server exception | Check application logs or contact System Support |
+
+---
+*Delta Clinics CRM API Specification · Documented for Backend, Frontend, and Mobile Engineering Teams.*

@@ -1,42 +1,60 @@
 /**
- * Clinic CRM API Reference Data Structure
- * Contains full specification details extracted from clinic-crm-api-reference.md
+ * Delta Clinics CRM — Production REST API Reference Data Structure
+ * Contains full specification details matching the Multi-Tenant Architecture
+ * Created & Maintained by DEVesters
  */
 
 const API_DATA = {
   info: {
-    title: "Clinic CRM — API Contract & Reference",
-    version: "v1.0",
+    title: "Delta Clinics CRM — REST API Contract & Reference",
+    version: "v1.1",
     format: "REST / JSON",
     audience: "Frontend team, mobile team, and third-party integrators",
-    description: "Complete API contract for the Clinic Management System: Patients, Appointments, Doctors, Medical Records, Billing, Inventory, Reports, and Roles & Permissions.",
-    baseUrl: "https://api.[CLINIC_DOMAIN].com/v1",
-    defaultClinicId: "cli_a1b2c3"
+    description: "Complete API specification for the Delta Clinics CRM SaaS platform: Central Platform Management, Subscription Plans, Offline Receipts, Support Desk, Server Telemetry, Multi-Branch Clinics, Public QR Booking, Doctors, Medical Records, Billing, Inventory, and Queued Notifications.",
+    baseUrl: "https://api.delta-clinics.com/v1",
+    tenantBaseUrl: "https://[tenant].delta-clinics.com/api/v1",
+    defaultClinicId: "cli_a1b2c3",
+    defaultTenant: "elshifa"
   },
 
   conventions: {
     headers: [
       { name: "Authorization", value: "Bearer [ACCESS_TOKEN]", required: true, description: "JWT Access token required for authenticated endpoints" },
       { name: "Content-Type", value: "application/json", required: true, description: "Media type for request payload" },
-      { name: "X-Clinic-Id", value: "[CLINIC_ID]", required: true, description: "Identifies target branch for multi-clinic accounts (e.g. cli_a1b2c3)" },
-      { name: "Idempotency-Key", value: "[UNIQUE_CLIENT_GENERATED_KEY]", required: false, description: "Optional key for POST /invoices and /invoices/{id}/payments to avoid duplicate financial transactions" }
+      { name: "X-Tenant", value: "[TENANT_ID_OR_SLUG]", required: false, description: "Identifies tenant database context if calling via central proxy (e.g. elshifa)" },
+      { name: "X-Domain", value: "[TENANT_DOMAIN]", required: false, description: "Dynamic subdomain resolution header (e.g. elshifa.delta-clinics.com)" },
+      { name: "X-Clinic-Id", value: "[CLINIC_ID]", required: false, description: "Identifies branch location within tenant database (e.g. cli_a1b2c3)" },
+      { name: "Idempotency-Key", value: "[UNIQUE_CLIENT_GENERATED_KEY]", required: false, description: "Optional UUID on POST /invoices and /payments to prevent duplicate financial transactions" }
     ],
     idFormats: [
-      { prefix: "pat_", entity: "Patient", example: "pat_7c3f21" },
-      { prefix: "doc_", entity: "Doctor", example: "doc_9f1a20" },
-      { prefix: "apt_", entity: "Appointment", example: "apt_5e2b18" },
-      { prefix: "cst_", entity: "Consultation", example: "cst_3d8f42" },
+      { prefix: "usr_", entity: "User / Staff / Admin", example: "usr_d4e5f6" },
+      { prefix: "cli_", entity: "Clinic / Branch", example: "cli_a1b2c3" },
+      { prefix: "doc_", entity: "Doctor Profile", example: "doc_9f1a20" },
+      { prefix: "spec_", entity: "Medical Specialty", example: "spec_3b7a11" },
+      { prefix: "sch_", entity: "Doctor Schedule", example: "sch_4e9b12" },
+      { prefix: "slot_", entity: "Time Slot", example: "slot_8c2d15" },
+      { prefix: "res_", entity: "Reservation / Booking", example: "res_5e2b18" },
+      { prefix: "pat_", entity: "Patient Profile", example: "pat_7c3f21" },
+      { prefix: "cst_", entity: "Consultation (EMR)", example: "cst_3d8f42" },
       { prefix: "rx_", entity: "Prescription", example: "rx_6a1c90" },
       { prefix: "inv_", entity: "Invoice", example: "inv_2f7e11" },
+      { prefix: "ivi_", entity: "Invoice Item", example: "ivi_1a2b3c" },
       { prefix: "pay_", entity: "Payment", example: "pay_8b4d33" },
+      { prefix: "exp_", entity: "Clinic Expense", example: "exp_9d4a12" },
       { prefix: "itm_", entity: "Inventory Item", example: "itm_1a9c77" },
-      { prefix: "usr_", entity: "User / Staff", example: "usr_d4e5f6" },
-      { prefix: "cli_", entity: "Clinic Branch", example: "cli_a1b2c3" }
+      { prefix: "adj_", entity: "Stock Adjustment", example: "adj_4e9b12" },
+      { prefix: "ntf_", entity: "Notification", example: "ntf_4c2e19" },
+      { prefix: "pln_", entity: "Subscription Plan", example: "pln_professional" },
+      { prefix: "sub_", entity: "Subscription Request", example: "sub_8b1a44" },
+      { prefix: "tik_", entity: "Support Ticket", example: "tik_9a4f22" },
+      { prefix: "msg_", entity: "Chat / Support Message", example: "msg_1b8e77" },
+      { prefix: "set_", entity: "Tenant Settings", example: "set_main" }
     ],
     pagination: [
       { param: "page", type: "integer", default: "1", description: "Page number (1-indexed)" },
       { param: "limit", type: "integer", default: "20", description: "Items per page (max 100)" },
-      { param: "sort", type: "string", default: "-created_at", description: "Field to sort by; prefix with '-' for descending" }
+      { param: "sort", type: "string", default: "-created_at", description: "Field to sort by; prefix with '-' for descending" },
+      { param: "search", type: "string", default: "null", description: "Search query string across relevant columns" }
     ],
     envelopes: {
       success: {
@@ -47,25 +65,230 @@ const API_DATA = {
       error: {
         success: false,
         error: {
-          code: "RESOURCE_NOT_FOUND",
-          message: "Patient with id 'pat_7c3f21' was not found.",
-          details: null
+          code: "PLAN_LIMIT_EXCEEDED",
+          message: "Maximum doctor capacity reached for your active plan (limit: 5). Please upgrade your subscription or request an add-on.",
+          details: { limit: 5, current_usage: 5, resource: "doctors" }
         }
       }
     }
   },
 
   roles: [
-    { name: "admin", badge: "danger", description: "Full access across all clinics and modules" },
-    { name: "clinic_manager", badge: "warning", description: "Full access within their assigned clinic(s)" },
-    { name: "doctor", badge: "primary", description: "Own schedule, assigned appointments, consultations, prescriptions they authored" },
-    { name: "nurse", badge: "info", description: "Patient vitals, appointment check-in, read-only medical records" },
-    { name: "receptionist", badge: "success", description: "Patients, appointments, check-in, invoice creation" },
-    { name: "accountant", badge: "secondary", description: "Invoices, payments, financial reports (no clinical data)" },
-    { name: "patient", badge: "dark", description: "Own profile, own appointments, own invoices, own prescriptions" }
+    { name: "super_admin", badge: "danger", description: "Full root access across all tenant databases, server hardware telemetry, plans, and offline billing approvals" },
+    { name: "support_admin", badge: "warning", description: "Platform technical support. Onboards clinics, handles support tickets, and troubleshoots tenant issues" },
+    { name: "finance_admin", badge: "secondary", description: "Platform accountant. Reviews subscription payments, manages plan pricing, and inspects MRR/ARR analytics" },
+    { name: "admin", badge: "danger", description: "Full administrative management within the clinic tenant" },
+    { name: "clinic_manager", badge: "warning", description: "Full management across branches, doctors, staff, inventory, and billing within the tenant" },
+    { name: "doctor", badge: "primary", description: "Own schedule, assigned appointments, consultations, prescriptions authored" },
+    { name: "nurse", badge: "info", description: "Patient vitals, appointment check-in, read-only medical records, and medical consumable inventory adjustments" },
+    { name: "receptionist", badge: "success", description: "Front-desk operations, reservations management, camera QR check-in, and invoice payments" },
+    { name: "accountant", badge: "secondary", description: "Invoices, payments, refunds, clinic expenses, and financial reports" },
+    { name: "patient", badge: "dark", description: "Public guest booking, personal appointment QR tickets, prescription history, and invoice settlement" }
   ],
 
   models: {
+    Tenant: {
+      description: "Central SaaS tenant clinic registration and database routing entity",
+      fields: [
+        { name: "id", type: "string", notes: "Tenant slug/identifier (e.g. elshifa)" },
+        { name: "tenancy_db_name", type: "string", notes: "Isolated database name (e.g. tenant_elshifa)" },
+        { name: "status", type: "string", notes: "active | trial | suspended | paused" },
+        { name: "plan_id", type: "string", notes: "pln_ prefix" },
+        { name: "subscription_expires_at", type: "string (ISO 8601)", notes: "Expiration timestamp" },
+        { name: "max_doctors", type: "integer", notes: "Base plan doctor limit" },
+        { name: "max_branches", type: "integer", notes: "Base plan branch limit" },
+        { name: "max_specialties", type: "integer", notes: "Base plan specialty limit" },
+        { name: "max_staff", type: "integer", notes: "Base plan staff limit" },
+        { name: "extra_doctors", type: "integer", notes: "Approved doctor add-on capacity" },
+        { name: "extra_branches", type: "integer", notes: "Approved branch add-on capacity" },
+        { name: "extra_staff", type: "integer", notes: "Approved staff add-on capacity" },
+        { name: "domains", type: "array", notes: "Bound domain names" }
+      ],
+      sample: {
+        id: "elshifa",
+        tenancy_db_name: "tenant_elshifa",
+        status: "active",
+        plan_id: "pln_growth",
+        subscription_expires_at: "2027-08-30T00:00:00Z",
+        max_doctors: 10,
+        max_branches: 3,
+        max_specialties: 8,
+        max_staff: 15,
+        extra_doctors: 2,
+        extra_branches: 0,
+        extra_staff: 5,
+        domains: [{ domain: "elshifa.delta-clinics.com" }]
+      }
+    },
+
+    Plan: {
+      description: "Central SaaS subscription plan tier with resource limits and add-on pricing",
+      fields: [
+        { name: "id", type: "string", notes: "pln_ prefix" },
+        { name: "name", type: "string", notes: "Tier name (e.g. Growth Plan)" },
+        { name: "slug", type: "string", notes: "URL-friendly slug" },
+        { name: "price", type: "number", notes: "Monthly billing price" },
+        { name: "price_before_discount", type: "number | null", notes: "Original price for strikethrough display" },
+        { name: "is_featured", type: "boolean", notes: "Highlighted pricing card badge" },
+        { name: "billing_cycle", type: "string", notes: "monthly | yearly" },
+        { name: "max_doctors", type: "integer", notes: "Doctor seat limit" },
+        { name: "max_branches", type: "integer", notes: "Branch locations limit" },
+        { name: "max_specialties", type: "integer", notes: "Specialties catalog limit" },
+        { name: "max_staff", type: "integer", notes: "Staff accounts limit" },
+        { name: "extra_doctor_price", type: "number", notes: "Add-on fee per extra doctor" },
+        { name: "extra_branch_price", type: "number", notes: "Add-on fee per extra branch" },
+        { name: "extra_staff_price", type: "number", notes: "Add-on fee per extra staff" },
+        { name: "features", type: "string[]", notes: "List of plan capabilities" },
+        { name: "is_trial", type: "boolean", notes: "Whether plan is a free trial" },
+        { name: "trial_days", type: "integer", notes: "Trial duration in days" },
+        { name: "status", type: "string", notes: "active | inactive" }
+      ],
+      sample: {
+        id: "pln_growth",
+        name: "Growth Plan",
+        slug: "growth",
+        price: 1200,
+        price_before_discount: 1500,
+        is_featured: true,
+        billing_cycle: "monthly",
+        max_doctors: 10,
+        max_branches: 3,
+        max_specialties: 8,
+        max_staff: 15,
+        extra_doctor_price: 100,
+        extra_branch_price: 300,
+        extra_staff_price: 50,
+        features: ["Unlimited Patient Records", "Full EMR & Prescriptions", "QR Camera Check-in", "Billing & Invoicing", "Medical Inventory", "Real-Time WebSockets"],
+        is_trial: false,
+        trial_days: 0,
+        status: "active"
+      }
+    },
+
+    SubscriptionRequest: {
+      description: "Offline subscription payment receipt submitted by a clinic for manual review",
+      fields: [
+        { name: "id", type: "string", notes: "sub_ prefix" },
+        { name: "tenant_id", type: "string", notes: "Tenant ID" },
+        { name: "plan_id", type: "string", notes: "Requested Plan ID" },
+        { name: "type", type: "string", notes: "plan_upgrade | plan_renewal | addon_doctor | addon_branch | addon_staff" },
+        { name: "quantity", type: "integer", notes: "Addon quantity (1 for plan renewals)" },
+        { name: "amount", type: "number", notes: "Total amount paid" },
+        { name: "payment_method", type: "string", notes: "instapay | vodafone_cash | bank_transfer | manual" },
+        { name: "transaction_reference", type: "string", notes: "Bank or wallet reference number" },
+        { name: "receipt_url", type: "string", notes: "Uploaded receipt file/image URL" },
+        { name: "status", type: "string", notes: "pending | approved | rejected" },
+        { name: "notes", type: "string | null", notes: "Clinic notes" },
+        { name: "admin_notes", type: "string | null", notes: "Super admin review feedback" },
+        { name: "processed_by", type: "string | null", notes: "Reviewing Super Admin ID" },
+        { name: "processed_at", type: "string (ISO 8601) | null", notes: "Approval timestamp" }
+      ],
+      sample: {
+        id: "sub_8b1a44",
+        tenant_id: "elshifa",
+        plan_id: "pln_growth",
+        type: "plan_upgrade",
+        quantity: 1,
+        amount: 1200,
+        payment_method: "instapay",
+        transaction_reference: "INSTA-992144810",
+        receipt_url: "https://storage.delta-clinics.com/receipts/rec_81239.jpg",
+        status: "pending",
+        notes: "Paid via Instapay on 01/09/2026",
+        admin_notes: null,
+        processed_by: null,
+        processed_at: null
+      }
+    },
+
+    SupportTicket: {
+      description: "Two-way support desk ticket between Clinic Admins and System Admins",
+      fields: [
+        { name: "id", type: "string", notes: "tik_ prefix" },
+        { name: "tenant_id", type: "string", notes: "Originating Tenant ID" },
+        { name: "user_id", type: "string", notes: "Submitting User ID" },
+        { name: "subject", type: "string", notes: "Ticket subject" },
+        { name: "status", type: "string", notes: "open | pending | in_progress | resolved | closed" },
+        { name: "priority", type: "string", notes: "low | medium | high | urgent" },
+        { name: "last_message_at", type: "string (ISO 8601)", notes: "Last interaction timestamp" }
+      ],
+      sample: {
+        id: "tik_9a4f22",
+        tenant_id: "elshifa",
+        user_id: "usr_d4e5f6",
+        subject: "Thermal printer margin adjustment",
+        status: "in_progress",
+        priority: "high",
+        last_message_at: "2026-09-01T14:22:00Z"
+      }
+    },
+
+    TenantSetting: {
+      description: "Tenant branding, logos, dynamic colors, and medical theme presets",
+      fields: [
+        { name: "id", type: "string", notes: "set_main" },
+        { name: "tenant_name", type: "string", notes: "Clinic display name" },
+        { name: "logo_url", type: "string | null", notes: "Clinic brand logo" },
+        { name: "phone", type: "string", notes: "Contact phone" },
+        { name: "email", type: "string", notes: "Contact email" },
+        { name: "address", type: "string", notes: "Main headquarters address" },
+        { name: "timezone", type: "string", notes: "Timezone (e.g. Africa/Cairo)" },
+        { name: "currency", type: "string", notes: "Currency code (e.g. EGP)" },
+        { name: "primary_color", type: "string", notes: "Primary brand hex code" },
+        { name: "secondary_color", type: "string", notes: "Secondary brand hex code" },
+        { name: "accent_color", type: "string", notes: "Accent brand hex code" },
+        { name: "accent_soft_color", type: "string", notes: "Soft accent background hex code" },
+        { name: "bg_color", type: "string", notes: "Body background hex code" },
+        { name: "card_bg_color", type: "string", notes: "Card surface hex code" },
+        { name: "theme_preset_id", type: "string", notes: "emerald | sapphire | cyan | teal | violet | ruby | custom" }
+      ],
+      sample: {
+        id: "set_main",
+        tenant_name: "El Shifa Specialized Clinics",
+        logo_url: "https://storage.delta-clinics.com/tenants/elshifa/logo.png",
+        phone: "+20224567890",
+        email: "info@elshifa.com",
+        address: "15 Abbas El Akkad, Nasr City, Cairo",
+        timezone: "Africa/Cairo",
+        currency: "EGP",
+        primary_color: "#059669",
+        secondary_color: "#047857",
+        accent_color: "#10b981",
+        accent_soft_color: "#d1fae5",
+        bg_color: "#f8fafc",
+        card_bg_color: "#ffffff",
+        theme_preset_id: "emerald"
+      }
+    },
+
+    Reservation: {
+      description: "Appointment booking linking patient, doctor, branch, and time slot with QR check-in",
+      fields: [
+        { name: "id", type: "string", notes: "res_ prefix" },
+        { name: "patient_id", type: "string", notes: "Patient User ID" },
+        { name: "doctor_id", type: "string", notes: "Doctor ID" },
+        { name: "clinic_id", type: "string", notes: "Branch Clinic ID" },
+        { name: "time_slot_id", type: "string", notes: "Time Slot ID" },
+        { name: "reservation_date", type: "string (date)", notes: "YYYY-MM-DD" },
+        { name: "status", type: "string", notes: "pending | accepted | confirmed | completed | cancelled" },
+        { name: "reservation_type", type: "string", notes: "consultation | follow_up | procedure | emergency" },
+        { name: "notes", type: "string | null", notes: "Clinical visit notes" },
+        { name: "qr_code_token", type: "string", notes: "Secure check-in token for receptionist scanner" }
+      ],
+      sample: {
+        id: "res_5e2b18",
+        patient_id: "usr_pat_7c3f21",
+        doctor_id: "doc_9f1a20",
+        clinic_id: "cli_a1b2c3",
+        time_slot_id: "slot_8c2d15",
+        reservation_date: "2026-09-10",
+        status: "confirmed",
+        reservation_type: "consultation",
+        notes: "Dermatology initial consultation",
+        qr_code_token: "qr_tok_9b2e8a11cf8842"
+      }
+    },
+
     Patient: {
       description: "Patient profile and medical background record",
       fields: [
@@ -81,8 +304,7 @@ const API_DATA = {
         { name: "allergies", type: "string[]", notes: "List of known allergies" },
         { name: "chronic_conditions", type: "string[]", notes: "List of chronic conditions" },
         { name: "emergency_contact", type: "object | null", notes: "{ name, phone, relation }" },
-        { name: "status", type: "string", notes: "active | archived" },
-        { name: "created_at / updated_at", type: "string (ISO 8601)", notes: "Timestamps" }
+        { name: "status", type: "string", notes: "active | archived" }
       ],
       sample: {
         id: "pat_7c3f21",
@@ -96,20 +318,18 @@ const API_DATA = {
         allergies: ["Penicillin"],
         chronic_conditions: [],
         emergency_contact: { name: "Omar Ibrahim", phone: "+201234500000", relation: "brother" },
-        status: "active",
-        created_at: "2025-11-02T08:30:00Z"
+        status: "active"
       }
     },
+
     Doctor: {
-      description: "Physician profile linked to a staff user account",
+      description: "Medical practitioner profile linked to staff account and specialty",
       fields: [
         { name: "id", type: "string", notes: "doc_ prefix" },
         { name: "user_id", type: "string", notes: "Linked staff user account ID" },
         { name: "full_name", type: "string", notes: "Doctor full name" },
-        { name: "specialty", type: "string", notes: "e.g. Dermatology, Cardiology" },
-        { name: "license_number", type: "string", notes: "Unique license ID" },
-        { name: "clinic_ids", type: "string[]", notes: "Assigned clinic branch IDs" },
-        { name: "consultation_fee", type: "number", notes: "Standard fee amount" },
+        { name: "specialty_id", type: "string", notes: "Specialty ID (spec_ prefix)" },
+        { name: "license_number", type: "string", notes: "Unique medical license ID" },
         { name: "bio", type: "string | null", notes: "Professional bio" },
         { name: "status", type: "string", notes: "active | on_leave | inactive" }
       ],
@@ -117,354 +337,157 @@ const API_DATA = {
         id: "doc_9f1a20",
         user_id: "usr_d4e5f6",
         full_name: "Dr. Ahmed Hassan",
-        specialty: "Dermatology",
-        license_number: "EG-DERM-44821",
-        clinic_ids: ["cli_a1b2c3"],
-        consultation_fee: 350,
-        bio: "10+ years in clinical dermatology.",
+        specialty_id: "spec_3b7a11",
+        license_number: "MED-EG-2018-4421",
+        bio: "Consultant Dermatologist with 12+ years experience.",
         status: "active"
       }
     },
-    Appointment: {
-      description: "Scheduled consultation, procedure, or follow-up slot",
-      fields: [
-        { name: "id", type: "string", notes: "apt_ prefix" },
-        { name: "patient_id", type: "string", notes: "Target patient" },
-        { name: "doctor_id", type: "string", notes: "Assigned doctor" },
-        { name: "clinic_id", type: "string", notes: "Branch clinic" },
-        { name: "scheduled_at", type: "string (ISO 8601)", notes: "Date & time UTC" },
-        { name: "duration_minutes", type: "integer", notes: "Default 30 min" },
-        { name: "type", type: "string", notes: "consultation | follow_up | procedure" },
-        { name: "status", type: "string", notes: "scheduled | confirmed | checked_in | in_progress | completed | cancelled | no_show" },
-        { name: "reason", type: "string | null", notes: "Visit reason" },
-        { name: "notes", type: "string | null", notes: "Internal notes" },
-        { name: "created_by", type: "string", notes: "Staff or patient user ID" }
-      ],
-      sample: {
-        id: "apt_5e2b18",
-        patient_id: "pat_7c3f21",
-        doctor_id: "doc_9f1a20",
-        clinic_id: "cli_a1b2c3",
-        scheduled_at: "2026-08-15T11:30:00Z",
-        duration_minutes: 30,
-        type: "consultation",
-        status: "scheduled",
-        reason: "Follow-up on skin rash",
-        created_by: "usr_7b1e90"
-      }
-    },
-    Consultation: {
-      description: "Clinical consultation record with diagnoses and vitals",
-      fields: [
-        { name: "id", type: "string", notes: "cst_ prefix" },
-        { name: "appointment_id", type: "string", notes: "Linked appointment" },
-        { name: "patient_id / doctor_id", type: "string", notes: "References" },
-        { name: "chief_complaint", type: "string", notes: "Patient reported symptom" },
-        { name: "diagnosis", type: "string", notes: "Medical diagnosis" },
-        { name: "vitals", type: "object", notes: "{ blood_pressure, heart_rate, temperature_c, weight_kg, height_cm }" },
-        { name: "notes", type: "string | null", notes: "Clinical advice & observations" },
-        { name: "follow_up_required", type: "boolean", notes: "True if follow-up needed" },
-        { name: "follow_up_date", type: "string (date) | null", notes: "Follow-up target date" }
-      ],
-      sample: {
-        id: "cst_3d8f42",
-        appointment_id: "apt_5e2b18",
-        patient_id: "pat_7c3f21",
-        doctor_id: "doc_9f1a20",
-        chief_complaint: "Recurring itchy rash on forearm",
-        diagnosis: "Contact dermatitis",
-        vitals: { blood_pressure: "120/80", heart_rate: 72, temperature_c: 36.8, weight_kg: 68, height_cm: 170 },
-        notes: "Advised to avoid the suspected detergent brand.",
-        follow_up_required: true,
-        follow_up_date: "2026-08-29"
-      }
-    },
-    Prescription: {
-      description: "Medication prescription issued during a consultation",
-      fields: [
-        { name: "id", type: "string", notes: "rx_ prefix" },
-        { name: "consultation_id", type: "string", notes: "Linked consultation" },
-        { name: "patient_id / doctor_id", type: "string", notes: "References" },
-        { name: "medications", type: "array", notes: "[{ inventory_item_id, name, dosage, frequency, duration_days, instructions }]" },
-        { name: "status", type: "string", notes: "active | fulfilled | cancelled" },
-        { name: "issued_at", type: "string (ISO 8601)", notes: "Issuance timestamp" }
-      ],
-      sample: {
-        id: "rx_6a1c90",
-        consultation_id: "cst_3d8f42",
-        patient_id: "pat_7c3f21",
-        doctor_id: "doc_9f1a20",
-        medications: [
-          { inventory_item_id: "itm_1a9c77", name: "Cetirizine 10mg", dosage: "1 tablet", frequency: "once daily", duration_days: 10, instructions: "Take at night." }
-        ],
-        status: "active",
-        issued_at: "2026-07-20T10:15:00Z"
-      }
-    },
+
     Invoice: {
-      description: "Financial invoice for consultation, procedures, or medicines",
+      description: "Billing invoice with multi-item calculations and payment tracking",
       fields: [
         { name: "id", type: "string", notes: "inv_ prefix" },
-        { name: "patient_id / appointment_id / clinic_id", type: "string", notes: "References" },
-        { name: "items", type: "array", notes: "[{ description, quantity, unit_price, total }]" },
-        { name: "subtotal / discount / tax / total", type: "number", notes: "Financial totals" },
-        { name: "amount_paid / balance_due", type: "number", notes: "Payment progress" },
-        { name: "status", type: "string", notes: "draft | pending | partially_paid | paid | void" },
-        { name: "due_date", type: "string (date)", notes: "Payment due date" }
+        { name: "patient_id", type: "string", notes: "Target patient user ID" },
+        { name: "appointment_id", type: "string | null", notes: "Linked appointment" },
+        { name: "clinic_id", type: "string", notes: "Branch clinic ID" },
+        { name: "subtotal", type: "number", notes: "Gross items sum" },
+        { name: "discount", type: "number", notes: "Applied discount" },
+        { name: "tax", type: "number", notes: "Applied tax" },
+        { name: "total", type: "number", notes: "Net total (subtotal - discount + tax)" },
+        { name: "amount_paid", type: "number", notes: "Total amount collected" },
+        { name: "balance_due", type: "number", notes: "Remaining balance" },
+        { name: "status", type: "string", notes: "draft | issued | partially_paid | paid | void | cancelled" },
+        { name: "due_at", type: "string (date)", notes: "Payment due date" }
       ],
       sample: {
         id: "inv_2f7e11",
         patient_id: "pat_7c3f21",
-        appointment_id: "apt_5e2b18",
+        appointment_id: "res_5e2b18",
         clinic_id: "cli_a1b2c3",
-        items: [{ description: "Dermatology consultation", quantity: 1, unit_price: 350, total: 350 }],
-        subtotal: 350,
-        discount: 0,
+        subtotal: 450,
+        discount: 50,
         tax: 0,
-        total: 350,
-        amount_paid: 0,
-        balance_due: 350,
-        status: "pending",
-        due_date: "2026-08-22"
+        total: 400,
+        amount_paid: 400,
+        balance_due: 0,
+        status: "paid",
+        due_at: "2026-09-10"
       }
     },
-    Payment: {
-      description: "Payment transaction applied against an invoice",
-      fields: [
-        { name: "id", type: "string", notes: "pay_ prefix" },
-        { name: "invoice_id", type: "string", notes: "Target invoice" },
-        { name: "amount", type: "number", notes: "Payment amount" },
-        { name: "method", type: "string", notes: "cash | card | insurance | wallet" },
-        { name: "reference_number", type: "string | null", notes: "Transaction reference" },
-        { name: "received_by", type: "string", notes: "Staff user ID" },
-        { name: "paid_at", type: "string (ISO 8601)", notes: "Transaction timestamp" }
-      ],
-      sample: {
-        id: "pay_8b4d33",
-        invoice_id: "inv_2f7e11",
-        amount: 350,
-        method: "card",
-        reference_number: "TXN-8823410",
-        received_by: "usr_7b1e90",
-        paid_at: "2026-08-12T12:05:00Z"
-      }
-    },
+
     InventoryItem: {
-      description: "Clinic pharmacy or supply stock item",
+      description: "Medical supply item with stock tracking and reorder threshold",
       fields: [
         { name: "id", type: "string", notes: "itm_ prefix" },
         { name: "name", type: "string", notes: "Item name" },
-        { name: "category", type: "string", notes: "medicine | supply" },
-        { name: "unit", type: "string", notes: "box | vial | bottle | pack" },
-        { name: "quantity_in_stock", type: "integer", notes: "Current stock quantity" },
-        { name: "reorder_level", type: "integer", notes: "Triggers low-stock alert" },
-        { name: "unit_cost", type: "number", notes: "Cost per unit" },
-        { name: "expiry_date", type: "string (date) | null", notes: "Expiration date" },
-        { name: "clinic_id", type: "string", notes: "Branch clinic" }
+        { name: "sku", type: "string", notes: "Unique SKU identifier" },
+        { name: "quantity", type: "integer", notes: "Current quantity on hand" },
+        { name: "reorder_level", type: "integer", notes: "Threshold triggering low-stock alert" },
+        { name: "unit_price", type: "number", notes: "Cost per unit" },
+        { name: "status", type: "string", notes: "active | discontinued" }
       ],
       sample: {
         id: "itm_1a9c77",
-        name: "Cetirizine 10mg",
-        category: "medicine",
-        unit: "box",
-        quantity_in_stock: 120,
-        reorder_level: 20,
-        unit_cost: 45,
-        expiry_date: "2027-03-01",
-        clinic_id: "cli_a1b2c3"
+        name: "Sterile Gauze Pads 10x10",
+        sku: "MED-GZ-100",
+        quantity: 120,
+        reorder_level: 25,
+        unit_price: 15.50,
+        status: "active"
       }
     }
   },
 
   modules: [
     {
-      id: "auth",
-      title: "Authentication",
-      icon: "key",
-      description: "User login, token refresh, password resets, and current session management",
+      id: "central-auth",
+      title: "Central Admin Authentication",
+      icon: "shield-alt",
+      description: "Platform Super Admin login, token lifecycle, and session identity",
       endpoints: [
         {
-          id: "auth-login",
+          id: "central-auth-login",
           method: "POST",
-          path: "/auth/login",
-          title: "Log in with email + password",
+          path: "/v1/admin/auth/login",
+          title: "Super Admin Login",
           roles: ["public"],
-          description: "Authenticates a user with email and password, returning JWT access & refresh tokens.",
+          description: "Authenticates a platform system administrator, returning central Sanctum bearer tokens.",
           parameters: [],
           requestBody: {
-            email: "dr.hassan@clinic.com",
-            password: "••••••••"
+            email: "superadmin@delta-clinics.com",
+            password: "password123"
           },
           responses: [
             {
-              status: 200,
-              description: "200 OK — Authentication successful",
+              code: 200,
+              description: "Login successful",
               body: {
                 success: true,
                 data: {
-                  access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-                  refresh_token: "8f3a1c9e-4b2a-4567-89ab-cdef01234567",
+                  access_token: "1|admin_token_hash",
                   expires_in: 900,
                   user: {
-                    id: "usr_d4e5f6",
-                    full_name: "Dr. Ahmed Hassan",
-                    role: "doctor",
-                    clinic_id: "cli_a1b2c3"
+                    id: "usr_superadmin",
+                    full_name: "Platform Super Admin",
+                    email: "superadmin@delta-clinics.com",
+                    role: "super_admin"
                   }
                 }
               }
             },
             {
-              status: 401,
-              description: "401 Unauthorized — Invalid credentials or inactive account",
+              code: 422,
+              description: "Validation error / invalid credentials",
               body: {
                 success: false,
                 error: {
-                  code: "INVALID_CREDENTIALS",
-                  message: "The email or password provided is incorrect.",
-                  details: null
+                  code: "VALIDATION_ERROR",
+                  message: "Invalid credentials provided.",
+                  details: { email: ["These credentials do not match our records."] }
                 }
               }
             }
           ]
         },
         {
-          id: "auth-refresh",
-          method: "POST",
-          path: "/auth/refresh",
-          title: "Rotate access token",
-          roles: ["public"],
-          description: "Exchanges a valid long-lived single-use refresh token for a new access token and rotated refresh token.",
-          parameters: [],
-          requestBody: {
-            refresh_token: "8f3a1c9e-4b2a-4567-89ab-cdef01234567"
-          },
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Tokens rotated successfully",
-              body: {
-                success: true,
-                data: {
-                  access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.new...",
-                  refresh_token: "a91cf2b0-9e8d-7c6b-5a4f-3e2d1c0b9a8f",
-                  expires_in: 900
-                }
-              }
-            },
-            {
-              status: 401,
-              description: "401 Unauthorized — Token expired or revoked",
-              body: {
-                success: false,
-                error: {
-                  code: "INVALID_OR_EXPIRED_TOKEN",
-                  message: "The refresh token is invalid or has expired.",
-                  details: null
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "auth-logout",
-          method: "POST",
-          path: "/auth/logout",
-          title: "Revoke refresh token",
-          roles: ["authenticated"],
-          description: "Invalidates the active refresh token, ending the session.",
-          parameters: [],
-          requestBody: {
-            refresh_token: "8f3a1c9e-4b2a-4567-89ab-cdef01234567"
-          },
-          responses: [
-            {
-              status: 204,
-              description: "204 No Content — Successfully logged out",
-              body: null
-            }
-          ]
-        },
-        {
-          id: "auth-forgot-password",
-          method: "POST",
-          path: "/auth/forgot-password",
-          title: "Request password reset email",
-          roles: ["public"],
-          description: "Sends a password reset link to the email address. Always returns 200 to prevent user enumeration.",
-          parameters: [],
-          requestBody: {
-            email: "dr.hassan@clinic.com"
-          },
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Request received",
-              body: {
-                success: true,
-                data: { message: "If that email exists, a reset link has been sent." }
-              }
-            }
-          ]
-        },
-        {
-          id: "auth-reset-password",
-          method: "POST",
-          path: "/auth/reset-password",
-          title: "Set new password",
-          roles: ["public"],
-          description: "Resets the user password using a valid reset token received via email.",
-          parameters: [],
-          requestBody: {
-            reset_token: "9c2f-reset-token-sample-string",
-            new_password: "NewSecurePass123!"
-          },
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Password updated",
-              body: {
-                success: true,
-                data: { message: "Password updated successfully." }
-              }
-            },
-            {
-              status: 400,
-              description: "400 Bad Request — Weak password or invalid token",
-              body: {
-                success: false,
-                error: {
-                  code: "WEAK_PASSWORD",
-                  message: "Password must contain at least 8 characters, numbers, and symbols.",
-                  details: null
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "auth-me",
+          id: "central-auth-me",
           method: "GET",
-          path: "/auth/me",
-          title: "Current user profile",
-          roles: ["authenticated"],
-          description: "Fetches details of the currently authenticated user session.",
+          path: "/v1/admin/auth/me",
+          title: "Current Admin Profile",
+          roles: ["super_admin", "support_admin", "finance_admin"],
+          description: "Returns currently authenticated system admin user profile and central permissions.",
           parameters: [],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Session info",
+              code: 200,
+              description: "Admin profile returned",
               body: {
                 success: true,
                 data: {
-                  id: "usr_d4e5f6",
-                  full_name: "Dr. Ahmed Hassan",
-                  email: "dr.hassan@clinic.com",
-                  role: "doctor",
-                  clinic_id: "cli_a1b2c3",
-                  status: "active"
+                  id: "usr_superadmin",
+                  full_name: "Platform Super Admin",
+                  email: "superadmin@delta-clinics.com",
+                  role: "super_admin",
+                  permissions: ["plans:*", "subscriptions:*", "server:*", "support:*"]
                 }
               }
+            }
+          ]
+        },
+        {
+          id: "central-auth-logout",
+          method: "POST",
+          path: "/v1/admin/auth/logout",
+          title: "Super Admin Logout",
+          roles: ["super_admin", "support_admin", "finance_admin"],
+          description: "Revokes current administrator access token.",
+          parameters: [],
+          responses: [
+            {
+              code: 200,
+              description: "Logged out",
+              body: { success: true, data: { message: "Logged out successfully." } }
             }
           ]
         }
@@ -472,188 +495,135 @@ const API_DATA = {
     },
 
     {
-      id: "users",
-      title: "Users & Staff",
-      icon: "users",
-      description: "Manage clinic staff accounts, invitations, profile updates, and active status",
+      id: "central-clinics",
+      title: "Tenant Provisioning & Clinics",
+      icon: "hospital",
+      description: "Provision new clinic tenants, spawn isolated databases, manage domains, and monitor subscribers",
       endpoints: [
         {
-          id: "users-list",
+          id: "central-clinics-check-availability",
           method: "GET",
-          path: "/users",
-          title: "List staff members",
-          roles: ["admin", "clinic_manager"],
-          description: "Retrieves a paginated list of staff members with optional filters.",
+          path: "/v1/clinics/check-availability/{slug}",
+          title: "Check Subdomain Availability",
+          roles: ["public"],
+          description: "Checks if a requested clinic subdomain or slug is available for onboarding.",
           parameters: [
-            { name: "role", type: "query", dataType: "string", required: false, description: "Filter by role (e.g. doctor, receptionist)" },
-            { name: "clinic_id", type: "query", dataType: "string", required: false, description: "Filter by clinic branch ID" },
-            { name: "status", type: "query", dataType: "string", required: false, description: "active | pending | inactive" },
-            { name: "search", type: "query", dataType: "string", required: false, description: "Search by name, email, or phone" },
-            { name: "page", type: "query", dataType: "integer", required: false, default: "1", description: "Page number" },
-            { name: "limit", type: "query", dataType: "integer", required: false, default: "20", description: "Items per page" }
+            { name: "slug", in: "path", required: true, type: "string", description: "Subdomain slug (e.g. elshifa)" }
           ],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Staff list",
+              code: 200,
+              description: "Availability status",
+              body: { success: true, data: { slug: "elshifa", is_available: true } }
+            }
+          ]
+        },
+        {
+          id: "central-clinics-list",
+          method: "GET",
+          path: "/v1/clinics",
+          title: "List All Tenant Clinics",
+          roles: ["super_admin", "support_admin"],
+          description: "Lists all tenant clinics registered on the SaaS platform with plan and database metrics.",
+          parameters: [
+            { name: "status", in: "query", required: false, type: "string", description: "Filter by status: active, trial, suspended" },
+            { name: "page", in: "query", required: false, type: "integer", description: "Page number" }
+          ],
+          responses: [
+            {
+              code: 200,
+              description: "Clinics list",
               body: {
                 success: true,
                 data: [
                   {
-                    id: "usr_d4e5f6",
-                    full_name: "Dr. Ahmed Hassan",
-                    email: "dr.hassan@clinic.com",
-                    phone: "+201012345678",
-                    role: "doctor",
-                    clinic_id: "cli_a1b2c3",
+                    id: "elshifa",
+                    name: "El Shifa Specialized Clinics",
                     status: "active",
-                    created_at: "2026-01-14T09:00:00Z"
+                    plan_id: "pln_growth",
+                    subscription_expires_at: "2027-08-30T00:00:00Z",
+                    domains: [{ domain: "elshifa.delta-clinics.com" }],
+                    created_at: "2026-01-15T08:00:00Z"
                   }
                 ],
-                meta: { page: 1, limit: 20, total: 12, total_pages: 1 }
+                meta: { page: 1, limit: 20, total: 1, total_pages: 1 }
               }
             }
           ]
         },
         {
-          id: "users-create",
+          id: "central-clinics-create",
           method: "POST",
-          path: "/users",
-          title: "Invite / create staff member",
-          roles: ["admin", "clinic_manager"],
-          description: "Sends an invitation email to a new staff member. Account is pending until invitation accepted.",
+          path: "/v1/clinics",
+          title: "Provision New Clinic Tenant",
+          roles: ["super_admin", "support_admin"],
+          description: "Creates a new clinic tenant, automatically initializes its isolated database, runs migrations, and seeds the initial admin account.",
           parameters: [],
           requestBody: {
-            full_name: "Mona Saeed",
-            email: "mona.saeed@clinic.com",
-            phone: "+201098765432",
-            role: "receptionist",
-            clinic_id: "cli_a1b2c3"
+            id: "elshifa",
+            name: "El Shifa Specialized Clinics",
+            plan_id: "pln_growth",
+            domain: "elshifa.delta-clinics.com",
+            admin_name: "Dr. Tarek Hegazi",
+            admin_email: "admin@elshifa.com",
+            admin_phone: "+201099887766",
+            admin_password: "ClinicAdminPassword123!",
+            trial_days: 14
           },
           responses: [
             {
-              status: 201,
-              description: "201 Created — Invitation sent",
+              code: 201,
+              description: "Clinic tenant provisioned",
               body: {
                 success: true,
                 data: {
-                  id: "usr_7b1e90",
-                  full_name: "Mona Saeed",
-                  email: "mona.saeed@clinic.com",
-                  role: "receptionist",
-                  clinic_id: "cli_a1b2c3",
-                  status: "pending",
-                  created_at: "2026-08-12T10:15:00Z"
+                  id: "elshifa",
+                  name: "El Shifa Specialized Clinics",
+                  tenancy_db_name: "tenant_elshifa",
+                  status: "trial",
+                  domain: "elshifa.delta-clinics.com"
                 }
-              }
-            },
-            {
-              status: 409,
-              description: "409 Conflict — Email already registered",
-              body: {
-                success: false,
-                error: { code: "EMAIL_ALREADY_EXISTS", message: "A user with this email already exists.", details: null }
               }
             }
           ]
         },
         {
-          id: "users-get",
-          method: "GET",
-          path: "/users/{userId}",
-          title: "Get staff member details",
-          roles: ["admin", "clinic_manager", "self"],
-          description: "Fetches details of a specific staff member by ID.",
-          parameters: [
-            { name: "userId", type: "path", dataType: "string", required: true, description: "Target staff user ID (e.g. usr_d4e5f6)" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Staff details",
-              body: {
-                success: true,
-                data: {
-                  id: "usr_d4e5f6",
-                  full_name: "Dr. Ahmed Hassan",
-                  email: "dr.hassan@clinic.com",
-                  phone: "+201012345678",
-                  role: "doctor",
-                  clinic_id: "cli_a1b2c3",
-                  status: "active",
-                  created_at: "2026-01-14T09:00:00Z"
-                }
-              }
-            },
-            {
-              status: 404,
-              description: "404 Not Found — Staff member not found",
-              body: { success: false, error: { code: "USER_NOT_FOUND", message: "Staff member not found.", details: null } }
-            }
-          ]
-        },
-        {
-          id: "users-update",
+          id: "central-clinics-update",
           method: "PATCH",
-          path: "/users/{userId}",
-          title: "Update staff member",
-          roles: ["admin", "clinic_manager", "self"],
-          description: "Updates fields of a staff profile. Self-users cannot change their own role.",
+          path: "/v1/clinics/{id}",
+          title: "Update Clinic Tenant",
+          roles: ["super_admin"],
+          description: "Updates tenant metadata, status (active/suspended/paused), or domain bindings.",
           parameters: [
-            { name: "userId", type: "path", dataType: "string", required: true, description: "Target staff user ID" }
+            { name: "id", in: "path", required: true, type: "string", description: "Tenant slug (e.g. elshifa)" }
           ],
           requestBody: {
-            phone: "+201099998888"
+            status: "suspended",
+            name: "El Shifa Medical Center"
           },
           responses: [
             {
-              status: 200,
-              description: "200 OK — Staff updated",
-              body: {
-                success: true,
-                data: {
-                  id: "usr_7b1e90",
-                  full_name: "Mona Saeed",
-                  email: "mona.saeed@clinic.com",
-                  phone: "+201099998888",
-                  role: "receptionist",
-                  clinic_id: "cli_a1b2c3",
-                  status: "pending"
-                }
-              }
+              code: 200,
+              description: "Clinic updated",
+              body: { success: true, data: { id: "elshifa", status: "suspended" } }
             }
           ]
         },
         {
-          id: "users-delete",
+          id: "central-clinics-delete",
           method: "DELETE",
-          path: "/users/{userId}",
-          title: "Remove staff member",
-          roles: ["admin"],
-          description: "Soft-deletes the staff account. Account is retained for audit trails but login is disabled.",
+          path: "/v1/clinics/{id}",
+          title: "Delete / Drop Clinic Tenant",
+          roles: ["super_admin"],
+          description: "Decommissions a clinic tenant and drops its isolated tenant database.",
           parameters: [
-            { name: "userId", type: "path", dataType: "string", required: true, description: "Target staff user ID" }
+            { name: "id", in: "path", required: true, type: "string", description: "Tenant slug" }
           ],
-          responses: [
-            { status: 204, description: "204 No Content — Staff soft-deleted", body: null }
-          ]
-        },
-        {
-          id: "users-status",
-          method: "PATCH",
-          path: "/users/{userId}/status",
-          title: "Activate or deactivate staff member",
-          roles: ["admin", "clinic_manager"],
-          description: "Changes staff status between active and inactive.",
-          parameters: [
-            { name: "userId", type: "path", dataType: "string", required: true, description: "Target staff user ID" }
-          ],
-          requestBody: { status: "inactive" },
           responses: [
             {
-              status: 200,
-              description: "200 OK — Status updated",
-              body: { success: true, data: { id: "usr_7b1e90", status: "inactive" } }
+              code: 200,
+              description: "Tenant dropped",
+              body: { success: true, data: { message: "Tenant and database deleted successfully." } }
             }
           ]
         }
@@ -661,91 +631,113 @@ const API_DATA = {
     },
 
     {
-      id: "roles",
-      title: "Roles & Permissions",
-      icon: "shield-check",
-      description: "Manage system access control roles and fine-grained permissions matrix",
+      id: "plans",
+      title: "Subscription Plans & MRR Analytics",
+      icon: "tags",
+      description: "Manage subscription tiers, feature limits, add-on pricing, and inspect real-time MRR analytics",
       endpoints: [
         {
-          id: "roles-list",
+          id: "plans-list",
           method: "GET",
-          path: "/roles",
-          title: "List roles",
-          roles: ["admin"],
-          description: "Lists all standard and custom staff roles defined in the clinic system.",
+          path: "/v1/plans",
+          title: "List All Subscription Plans",
+          roles: ["public", "super_admin"],
+          description: "Lists all SaaS subscription plans with feature limits, trial settings, and addon prices.",
           parameters: [],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Roles list",
+              code: 200,
+              description: "Plans list",
               body: {
                 success: true,
                 data: [
-                  { id: "role_super_admin", name: "super_admin", description: "DEVesters Platform Owner — Full root access across all clinics and system configuration" },
-                  { id: "role_support_admin", name: "support_admin", description: "DEVesters Support Agent — Onboards clinics, configures staff & secretaries without root financial keys" },
-                  { id: "role_clinic_manager", name: "clinic_manager", description: "Clinic Branch Manager — Full administrative access within assigned branch" },
-                  { id: "role_doctor", name: "doctor", description: "Clinical staff with prescribing rights" },
-                  { id: "role_receptionist", name: "receptionist", description: "Front-desk operations & check-in" }
+                  {
+                    id: "pln_growth",
+                    name: "Growth Plan",
+                    slug: "growth",
+                    price: 1200,
+                    price_before_discount: 1500,
+                    is_featured: true,
+                    billing_cycle: "monthly",
+                    max_doctors: 10,
+                    max_branches: 3,
+                    max_specialties: 8,
+                    max_staff: 15,
+                    extra_doctor_price: 100,
+                    extra_branch_price: 300,
+                    extra_staff_price: 50,
+                    features: ["Unlimited Patient Records", "Full EMR", "Billing", "Inventory", "QR Check-in"],
+                    is_trial: false,
+                    trial_days: 0,
+                    status: "active"
+                  }
                 ]
               }
             }
           ]
         },
         {
-          id: "roles-get",
-          method: "GET",
-          path: "/roles/{roleId}",
-          title: "Get role + permission keys",
-          roles: ["admin"],
-          description: "Fetches role definition along with assigned permission flags.",
-          parameters: [
-            { name: "roleId", type: "path", dataType: "string", required: true, description: "Target role identifier" }
-          ],
+          id: "plans-create",
+          method: "POST",
+          path: "/v1/plans",
+          title: "Create Subscription Plan",
+          roles: ["super_admin"],
+          description: "Creates a new subscription plan tier with resource limits and addon pricing.",
+          parameters: [],
+          requestBody: {
+            name: "Enterprise Tier",
+            slug: "enterprise",
+            price: 2500,
+            price_before_discount: 3000,
+            is_featured: true,
+            billing_cycle: "monthly",
+            max_doctors: 30,
+            max_branches: 10,
+            max_specialties: 20,
+            max_staff: 50,
+            extra_doctor_price: 80,
+            extra_branch_price: 250,
+            extra_staff_price: 40,
+            features: ["Custom Domain", "Dedicated Database Backup", "24/7 SLA Support", "Full Telemetry"],
+            is_trial: false,
+            trial_days: 0,
+            status: "active"
+          },
           responses: [
             {
-              status: 200,
-              description: "200 OK — Role permissions",
-              body: {
-                success: true,
-                data: {
-                  id: "role_receptionist",
-                  name: "receptionist",
-                  permissions: [
-                    "patients:read", "patients:create", "patients:update",
-                    "appointments:read", "appointments:create", "appointments:check_in",
-                    "invoices:create"
-                  ]
-                }
-              }
+              code: 201,
+              description: "Plan created",
+              body: { success: true, data: { id: "pln_enterprise", name: "Enterprise Tier", price: 2500 } }
             }
           ]
         },
         {
-          id: "roles-update-permissions",
-          method: "PATCH",
-          path: "/roles/{roleId}/permissions",
-          title: "Update permission set",
-          roles: ["admin"],
-          description: "Updates granted permissions for a specified role. Admin role cannot be modified.",
+          id: "plans-get-analytics",
+          method: "GET",
+          path: "/v1/plans/{id}",
+          title: "Get Plan & Real-Time Analytics",
+          roles: ["super_admin"],
+          description: "Retrieves a subscription plan along with live subscriber count and estimated MRR generated.",
           parameters: [
-            { name: "roleId", type: "path", dataType: "string", required: true, description: "Target role identifier" }
+            { name: "id", in: "path", required: true, type: "string", description: "Plan ID (pln_...)" }
           ],
-          requestBody: {
-            permissions: [
-              "patients:read", "patients:create", "patients:update",
-              "appointments:read", "appointments:create", "appointments:check_in"
-            ]
-          },
           responses: [
             {
-              status: 200,
-              description: "200 OK — Permissions updated",
+              code: 200,
+              description: "Plan details with analytics",
               body: {
                 success: true,
                 data: {
-                  id: "role_receptionist",
-                  name: "receptionist",
-                  permissions: ["patients:read", "patients:create", "patients:update", "appointments:read", "appointments:create", "appointments:check_in"]
+                  id: "pln_growth",
+                  name: "Growth Plan",
+                  price: 1200,
+                  analytics: {
+                    total_subscribers: 42,
+                    active_subscribers: 38,
+                    trial_subscribers: 4,
+                    estimated_mrr: 45600,
+                    total_revenue_generated: 547200
+                  }
                 }
               }
             }
@@ -755,175 +747,98 @@ const API_DATA = {
     },
 
     {
-      id: "clinics",
-      title: "Clinics (Multi-Branch)",
-      icon: "building",
-      description: "Manage multi-branch medical center locations, timezone settings, and status",
+      id: "subscriptions",
+      title: "Offline Receipts & Plan Approvals",
+      icon: "file-invoice-dollar",
+      description: "Manage offline subscription receipts (Instapay, Vodafone Cash, Bank Transfer) and manual plan approvals",
       endpoints: [
         {
-          id: "clinics-list",
+          id: "subscriptions-list",
           method: "GET",
-          path: "/clinics",
-          title: "List tenant clinics",
-          roles: ["admin", "clinic_manager"],
-          description: "Retrieves list of tenant clinics including subscription plan details, custom admin contact, and live metrics (doctors_count, branches_count).",
+          path: "/v1/subscription-requests",
+          title: "List All Payment Requests",
+          roles: ["super_admin", "finance_admin"],
+          description: "Lists all offline subscription renewal and upgrade receipt submissions.",
           parameters: [
-            { name: "page", type: "query", dataType: "integer", required: false, default: "1", description: "Page number" },
-            { name: "limit", type: "query", dataType: "integer", required: false, default: "20", description: "Items per page" }
+            { name: "status", in: "query", required: false, type: "string", description: "pending | approved | rejected" },
+            { name: "tenant_id", in: "query", required: false, type: "string", description: "Filter by clinic tenant" }
           ],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Tenant clinics list with plan and metrics",
+              code: 200,
+              description: "Requests list",
               body: {
                 success: true,
                 data: [
                   {
-                    id: "cli_a1b2c3",
-                    name: "Devesters Medical Center — Mansoura",
-                    domain: "devesters-mansoura",
-                    subdomain: "devesters-mansoura.localhost",
-                    address: "12 El-Gomhoria St, Mansoura",
-                    phone: "+205023456789",
-                    timezone: "Africa/Cairo",
-                    status: "active",
-                    plan: "Professional",
-                    subscription_expires_at: "2027-08-14T23:59:59Z",
-                    admin_name: "Dr. Ahmed Hassan",
-                    admin_email: "admin@clinic.com",
-                    admin_phone: "+201012345678",
-                    doctors_count: 8,
-                    branches_count: 2,
-                    created_at: "2026-01-15T10:00:00Z"
+                    id: "sub_8b1a44",
+                    tenant_id: "elshifa",
+                    plan_id: "pln_growth",
+                    type: "plan_upgrade",
+                    amount: 1200,
+                    payment_method: "instapay",
+                    transaction_reference: "INSTA-992144810",
+                    receipt_url: "https://storage.delta-clinics.com/receipts/rec_81239.jpg",
+                    status: "pending",
+                    created_at: "2026-09-01T12:00:00Z"
                   }
-                ],
-                meta: { page: 1, limit: 20, total: 3, total_pages: 1 }
+                ]
               }
             }
           ]
         },
         {
-          id: "clinics-create",
-          method: "POST",
-          path: "/clinics",
-          title: "Create & onboard tenant clinic",
-          roles: ["admin"],
-          description: "Registers a new tenant clinic, provisions isolated tenant DB migrations/seeders automatically, saves plan limits, and sets up custom admin user credentials (TenantCreated Event).",
-          parameters: [],
+          id: "subscriptions-approve",
+          method: "PATCH",
+          path: "/v1/subscription-requests/{id}/approve",
+          title: "Approve Payment & Activate Plan",
+          roles: ["super_admin", "finance_admin"],
+          description: "Approves receipt, atomically updates tenant plan ID, disables trial mode, extends expiry date, and syncs resource limits.",
+          parameters: [
+            { name: "id", in: "path", required: true, type: "string", description: "Subscription request ID" }
+          ],
           requestBody: {
-            name: "El-Nokhba Specialized Clinic",
-            domain: "el-nokhba",
-            subdomain: "el-nokhba.localhost",
-            address: "5 Nile Corniche, Mansoura",
-            phone: "+201012345678",
-            timezone: "Africa/Cairo",
-            plan: "Professional",
-            subscription_expires_at: "2027-08-14T23:59:59Z",
-            admin_name: "Dr. Ahmed Hassan",
-            admin_email: "admin@el-nokhba.com",
-            admin_phone: "+201012345678",
-            admin_password: "SecurePassword123!"
+            admin_notes: "Instapay transaction verified against bank account."
           },
           responses: [
             {
-              status: 201,
-              description: "201 Created — Tenant clinic provisioned & admin created",
+              code: 200,
+              description: "Receipt approved and plan upgraded",
               body: {
                 success: true,
                 data: {
-                  id: "cli_el_nokhba",
-                  name: "El-Nokhba Specialized Clinic",
-                  domain: "el-nokhba",
-                  subdomain: "el-nokhba.localhost",
-                  address: "5 Nile Corniche, Mansoura",
-                  phone: "+201012345678",
-                  timezone: "Africa/Cairo",
-                  status: "active",
-                  plan: "Professional",
-                  subscription_expires_at: "2027-08-14T23:59:59Z",
-                  admin_name: "Dr. Ahmed Hassan",
-                  admin_email: "admin@el-nokhba.com",
-                  admin_phone: "+201012345678",
-                  database_name: "tenant_el_nokhba_db",
-                  created_at: "2026-08-14T23:36:00Z"
+                  id: "sub_8b1a44",
+                  status: "approved",
+                  processed_at: "2026-09-01T12:30:00Z",
+                  tenant: {
+                    id: "elshifa",
+                    plan_id: "pln_growth",
+                    status: "active",
+                    subscription_expires_at: "2027-09-01T00:00:00Z"
+                  }
                 }
               }
             }
           ]
         },
         {
-          id: "clinics-get",
-          method: "GET",
-          path: "/clinics/{clinicId}",
-          title: "Get branch details",
-          roles: ["admin", "clinic_manager"],
-          description: "Fetches information for a single clinic branch.",
-          parameters: [
-            { name: "clinicId", type: "path", dataType: "string", required: true, description: "Clinic ID (e.g. cli_a1b2c3)" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Branch details",
-              body: {
-                success: true,
-                data: {
-                  id: "cli_a1b2c3",
-                  name: "Devesters Medical Center — Mansoura",
-                  address: "12 El-Gomhoria St, Mansoura",
-                  phone: "+205023456789",
-                  timezone: "Africa/Cairo",
-                  status: "active"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "clinics-update",
+          id: "subscriptions-reject",
           method: "PATCH",
-          path: "/clinics/{clinicId}",
-          title: "Update clinic branch",
-          roles: ["admin", "clinic_manager"],
-          description: "Updates contact, address, or name details for a branch.",
+          path: "/v1/subscription-requests/{id}/reject",
+          title: "Reject Payment Receipt",
+          roles: ["super_admin", "finance_admin"],
+          description: "Rejects invalid offline payment receipt with administrative feedback.",
           parameters: [
-            { name: "clinicId", type: "path", dataType: "string", required: true, description: "Clinic ID" }
+            { name: "id", in: "path", required: true, type: "string", description: "Subscription request ID" }
           ],
-          requestBody: { phone: "+205011112222" },
+          requestBody: {
+            admin_notes: "Transaction reference was not found in bank statement. Please re-upload."
+          },
           responses: [
             {
-              status: 200,
-              description: "200 OK — Branch updated",
-              body: {
-                success: true,
-                data: {
-                  id: "cli_a1b2c3",
-                  name: "Devesters Medical Center — Mansoura",
-                  address: "12 El-Gomhoria St, Mansoura",
-                  phone: "+205011112222",
-                  timezone: "Africa/Cairo",
-                  status: "active"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "clinics-delete",
-          method: "DELETE",
-          path: "/clinics/{clinicId}",
-          title: "Deactivate branch",
-          roles: ["admin"],
-          description: "Deactivates the branch. Historical records are preserved.",
-          parameters: [
-            { name: "clinicId", type: "path", dataType: "string", required: true, description: "Clinic ID" }
-          ],
-          responses: [
-            { status: 204, description: "204 No Content — Branch deactivated", body: null },
-            {
-              status: 409,
-              description: "409 Conflict — Clinic has active upcoming appointments",
-              body: { success: false, error: { code: "CLINIC_HAS_ACTIVE_APPOINTMENTS", message: "Cannot deactivate branch with pending appointments.", details: null } }
+              code: 200,
+              description: "Receipt rejected",
+              body: { success: true, data: { id: "sub_8b1a44", status: "rejected" } }
             }
           ]
         }
@@ -931,286 +846,410 @@ const API_DATA = {
     },
 
     {
-      id: "patients",
-      title: "Patients",
-      icon: "user-heart",
-      description: "Patient registration, profiles, medical history timeline, appointments, and billing records",
+      id: "support-tickets",
+      title: "Support Desk & Real-Time Chat",
+      icon: "headset",
+      description: "Two-way support ticketing system between Clinic Managers and System Support with internal admin notes and WebSockets",
       endpoints: [
         {
-          id: "patients-list",
+          id: "support-tickets-list",
           method: "GET",
-          path: "/patients",
-          title: "Search / list patients",
-          roles: ["admin", "clinic_manager", "doctor", "nurse", "receptionist", "accountant"],
-          description: "Retrieves a paginated list of patients with search filtering by name, phone, or national ID.",
+          path: "/v1/support-tickets",
+          title: "List Support Tickets",
+          roles: ["super_admin", "support_admin"],
+          description: "Lists all support tickets across all clinics with priority and status filters.",
           parameters: [
-            { name: "search", type: "query", dataType: "string", required: false, description: "Search string matching name, phone, or national ID" },
-            { name: "status", type: "query", dataType: "string", required: false, description: "active | archived" },
-            { name: "gender", type: "query", dataType: "string", required: false, description: "male | female" },
-            { name: "page", type: "query", dataType: "integer", required: false, default: "1", description: "Page number" },
-            { name: "limit", type: "query", dataType: "integer", required: false, default: "20", description: "Items per page" }
+            { name: "status", in: "query", required: false, type: "string", description: "open, in_progress, resolved, closed" },
+            { name: "priority", in: "query", required: false, type: "string", description: "low, medium, high, urgent" }
           ],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Patient list",
+              code: 200,
+              description: "Tickets list",
               body: {
                 success: true,
                 data: [
                   {
-                    id: "pat_7c3f21",
-                    full_name: "Laila Ibrahim",
-                    national_id: "29501150123456",
-                    phone: "+201234567890",
-                    email: "laila.ibrahim@example.com",
-                    date_of_birth: "1995-01-15",
-                    gender: "female",
-                    blood_type: "O+",
-                    allergies: ["Penicillin"],
-                    chronic_conditions: [],
-                    status: "active",
-                    created_at: "2025-11-02T08:30:00Z"
+                    id: "tik_9a4f22",
+                    tenant_id: "elshifa",
+                    subject: "Printer alignment issue on branch 2",
+                    status: "in_progress",
+                    priority: "high",
+                    last_message_at: "2026-09-01T14:22:00Z"
                   }
-                ],
-                meta: { page: 1, limit: 20, total: 386, total_pages: 20 }
+                ]
               }
             }
           ]
         },
         {
-          id: "patients-create",
+          id: "support-tickets-reply",
           method: "POST",
-          path: "/patients",
-          title: "Register new patient",
-          roles: ["admin", "clinic_manager", "receptionist"],
-          description: "Creates a new patient profile with national ID uniqueness validation.",
+          path: "/v1/support-tickets/{id}/messages",
+          title: "Send Reply / Internal Note",
+          roles: ["super_admin", "support_admin"],
+          description: "Sends a reply message on the ticket. Supports file attachments and private internal notes visible only to System Admins.",
+          parameters: [
+            { name: "id", in: "path", required: true, type: "string", description: "Support ticket ID" }
+          ],
+          requestBody: {
+            message: "We have updated the thermal printer configuration template for your clinic.",
+            is_internal: false,
+            attachment: null
+          },
+          responses: [
+            {
+              code: 201,
+              description: "Message sent and broadcasted",
+              body: {
+                success: true,
+                data: {
+                  id: "msg_1b8e77",
+                  support_ticket_id: "tik_9a4f22",
+                  sender_type: "system_admin",
+                  sender_name: "Sarah Mansour",
+                  message: "We have updated the thermal printer configuration template for your clinic.",
+                  is_internal: false,
+                  created_at: "2026-09-01T14:25:00Z"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      id: "executive-reports",
+      title: "Executive Analytics & Health Telemetry",
+      icon: "chart-line",
+      description: "Platform-level executive KPIs: MRR, ARR, ARPU, Logo Churn, Clinic Health Scoring, and Churn Risk Telemetry",
+      endpoints: [
+        {
+          id: "reports-executive-dashboard",
+          method: "GET",
+          path: "/v1/reports/executive-dashboard",
+          title: "Executive SaaS Dashboard",
+          roles: ["super_admin", "finance_admin"],
+          description: "Calculates real-time MRR (Base Plan + Addons), ARR, ARPU, active subscriber counts, and logo churn rate.",
+          parameters: [],
+          responses: [
+            {
+              code: 200,
+              description: "Executive metrics",
+              body: {
+                success: true,
+                data: {
+                  mrr: 185400,
+                  arr: 2224800,
+                  arpu: 1287.50,
+                  active_clinics: 144,
+                  logo_churn_rate_percent: 1.4,
+                  plan_distribution: { starter: 45, growth: 72, enterprise: 27 }
+                }
+              }
+            }
+          ]
+        },
+        {
+          id: "reports-tenant-health",
+          method: "GET",
+          path: "/v1/reports/tenant-health",
+          title: "Tenant Health & Churn Risk Telemetry",
+          roles: ["super_admin"],
+          description: "Calculates 0-100 health scores, risk tiering (healthy, at_risk, critical), and automated upsell triggers.",
+          parameters: [],
+          responses: [
+            {
+              code: 200,
+              description: "Tenant health scores",
+              body: {
+                success: true,
+                data: [
+                  {
+                    tenant_id: "elshifa",
+                    tenant_name: "El Shifa Specialized Clinics",
+                    health_score: 94,
+                    risk_tier: "healthy",
+                    utilization: { doctors_used: 8, doctors_limit: 10, utilization_percent: 80.0 },
+                    reservations_30d: 340,
+                    open_tickets: 0,
+                    upsell_recommendations: []
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      id: "server-health",
+      title: "Server Infrastructure Telemetry",
+      icon: "server",
+      description: "Hardware telemetry, CPU/RAM/Disk metrics, MySQL database breakdown, daemon monitoring, and cache tools",
+      endpoints: [
+        {
+          id: "server-health-metrics",
+          method: "GET",
+          path: "/v1/server/health",
+          title: "Real-Time Hardware Metrics",
+          roles: ["super_admin"],
+          description: "Inspects server CPU %, load averages (1/5/15m), RAM consumption, and Disk storage usage.",
+          parameters: [],
+          responses: [
+            {
+              code: 200,
+              description: "Server hardware metrics",
+              body: {
+                success: true,
+                data: {
+                  cpu: { usage_percent: 14.5, cores: 8, load_avg_1m: 0.35, load_avg_5m: 0.42, load_avg_15m: 0.40 },
+                  memory: { total_mb: 32768, used_mb: 12450, free_mb: 20318, usage_percent: 38.0 },
+                  disk: { total_gb: 512, used_gb: 128, free_gb: 384, usage_percent: 25.0 }
+                }
+              }
+            }
+          ]
+        },
+        {
+          id: "server-services",
+          method: "GET",
+          path: "/v1/server/services",
+          title: "Infrastructure Services Status",
+          roles: ["super_admin"],
+          description: "Checks running daemon health for Nginx, MySQL, Redis, Octane FrankenPHP, and background Queue workers.",
+          parameters: [],
+          responses: [
+            {
+              code: 200,
+              description: "Services status",
+              body: {
+                success: true,
+                data: {
+                  nginx: "running",
+                  mysql: "running",
+                  redis: "running",
+                  octane: "running",
+                  queue_workers: "running"
+                }
+              }
+            }
+          ]
+        },
+        {
+          id: "server-databases",
+          method: "GET",
+          path: "/v1/server/databases",
+          title: "Tenant Databases Telemetry",
+          roles: ["super_admin"],
+          description: "Lists all MySQL databases (Central + all Tenant databases) with row counts and disk sizes in MB.",
+          parameters: [],
+          responses: [
+            {
+              code: 200,
+              description: "Databases list",
+              body: {
+                success: true,
+                data: [
+                  { database: "delta_clinics_central", tables_count: 24, size_mb: 48.2 },
+                  { database: "tenant_elshifa", tables_count: 28, size_mb: 112.5 }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          id: "server-cache-clear",
+          method: "POST",
+          path: "/v1/server/cache/clear",
+          title: "Purge Server & App Cache",
+          roles: ["super_admin"],
+          description: "Purges framework configuration, route, view, and application caches.",
+          parameters: [],
+          responses: [
+            {
+              code: 200,
+              description: "Cache cleared",
+              body: { success: true, data: { message: "All application caches purged successfully." } }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      id: "public-booking",
+      title: "Public Guest Booking & QR Tickets",
+      icon: "qrcode",
+      description: "Public branch locator with geolocation filtering, doctor roster, available slot finder, and instant QR ticket booking",
+      endpoints: [
+        {
+          id: "public-clinics-list",
+          method: "GET",
+          path: "/api/v1/public/clinics",
+          title: "Find Nearby Branches",
+          roles: ["public"],
+          description: "Lists clinic branches with optional Haversine geolocation proximity radius filtering.",
+          parameters: [
+            { name: "latitude", in: "query", required: false, type: "number", description: "Patient latitude (e.g. 30.0444)" },
+            { name: "longitude", in: "query", required: false, type: "number", description: "Patient longitude (e.g. 31.2357)" },
+            { name: "radius_km", in: "query", required: false, type: "number", description: "Radius in kilometers (e.g. 15)" }
+          ],
+          responses: [
+            {
+              code: 200,
+              description: "Branches list with distance",
+              body: {
+                success: true,
+                data: [
+                  {
+                    id: "cli_nasr_city",
+                    name: "Nasr City Main Branch",
+                    phone: "+20224567890",
+                    address: "15 Abbas El Akkad, Cairo",
+                    latitude: 30.0588,
+                    longitude: 31.3412,
+                    distance_km: 2.4
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          id: "public-time-slots",
+          method: "GET",
+          path: "/api/v1/public/time-slots",
+          title: "Find Available Time Slots",
+          roles: ["public"],
+          description: "Finds open, unbooked appointment slots for a specific doctor, branch, and date.",
+          parameters: [
+            { name: "doctor_id", in: "query", required: true, type: "string", description: "Doctor ID (doc_...)" },
+            { name: "clinic_id", in: "query", required: true, type: "string", description: "Branch Clinic ID (cli_...)" },
+            { name: "date", in: "query", required: true, type: "string", description: "Date YYYY-MM-DD" }
+          ],
+          responses: [
+            {
+              code: 200,
+              description: "Available slots",
+              body: {
+                success: true,
+                data: [
+                  { id: "slot_101", start_time: "10:00", end_time: "10:30", status: "available" },
+                  { id: "slot_102", start_time: "10:30", end_time: "11:00", status: "available" }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          id: "public-reservations-book",
+          method: "POST",
+          path: "/api/v1/public/reservations",
+          title: "Guest Patient Booking",
+          roles: ["public"],
+          description: "Submits guest patient booking, automatically creates/links patient profile, locks slot, and generates printable QR check-in ticket.",
           parameters: [],
           requestBody: {
-            full_name: "Laila Ibrahim",
-            national_id: "29501150123456",
-            phone: "+201234567890",
-            email: "laila.ibrahim@example.com",
-            date_of_birth: "1995-01-15",
-            gender: "female",
-            address: "10 Talaat Harb St, Cairo",
-            blood_type: "O+",
-            allergies: ["Penicillin"],
-            chronic_conditions: [],
-            emergency_contact: { name: "Omar Ibrahim", phone: "+201234500000", relation: "brother" }
+            full_name: "Mohamed Ibrahim",
+            national_id: "29010150102345",
+            phone: "+201023456789",
+            email: "mohamed.ibrahim@example.com",
+            gender: "male",
+            date_of_birth: "1990-10-15",
+            doctor_id: "doc_9f1a20",
+            clinic_id: "cli_a1b2c3",
+            time_slot_id: "slot_8c2d15",
+            reservation_date: "2026-09-10",
+            reservation_type: "consultation",
+            notes: "First visit for general dermatology checkup."
           },
           responses: [
             {
-              status: 201,
-              description: "201 Created — Patient registered",
+              code: 201,
+              description: "Booking confirmed with QR payload",
               body: {
                 success: true,
                 data: {
-                  id: "pat_7c3f21",
-                  full_name: "Laila Ibrahim",
-                  national_id: "29501150123456",
-                  phone: "+201234567890",
-                  email: "laila.ibrahim@example.com",
-                  date_of_birth: "1995-01-15",
-                  gender: "female",
-                  address: "10 Talaat Harb St, Cairo",
-                  blood_type: "O+",
-                  allergies: ["Penicillin"],
-                  chronic_conditions: [],
-                  emergency_contact: { name: "Omar Ibrahim", phone: "+201234500000", relation: "brother" },
-                  status: "active",
-                  created_at: "2026-08-12T11:00:00Z"
+                  id: "res_5e2b18",
+                  status: "pending",
+                  reservation_date: "2026-09-10",
+                  doctor_name: "Dr. Ahmed Hassan",
+                  clinic_name: "Nasr City Branch",
+                  time_slot: "10:30 - 11:00",
+                  qr_code_token: "qr_tok_9b2e8a11cf8842",
+                  qr_ticket_payload: "https://elshifa.delta-clinics.com/ticket/res_5e2b18?token=qr_tok_9b2e8a11cf8842"
                 }
               }
-            },
-            {
-              status: 409,
-              description: "409 Conflict — National ID already registered",
-              body: { success: false, error: { code: "NATIONAL_ID_ALREADY_EXISTS", message: "Patient with this national ID already exists.", details: null } }
             }
           ]
-        },
+        }
+      ]
+    },
+
+    {
+      id: "tenant-settings",
+      title: "Clinic Branding & Theming",
+      icon: "palette",
+      description: "Manage clinic brand identity, logo, 6 medical color presets (Emerald, Sapphire, Cyan, Teal, Violet, Ruby) and custom tokens",
+      endpoints: [
         {
-          id: "patients-get",
+          id: "tenant-settings-get",
           method: "GET",
-          path: "/patients/{patientId}",
-          title: "Get patient details",
-          roles: ["admin", "clinic_manager", "doctor", "nurse", "receptionist", "accountant", "patient"],
-          description: "Fetches full profile information for a specified patient ID.",
-          parameters: [
-            { name: "patientId", type: "path", dataType: "string", required: true, description: "Patient ID (e.g. pat_7c3f21)" }
-          ],
+          path: "/api/v1/settings",
+          title: "Get Clinic Branding Settings",
+          roles: ["public", "admin", "clinic_manager"],
+          description: "Retrieves clinic branding colors, logo URL, contact details, timezone, and currency.",
+          parameters: [],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Patient profile",
+              code: 200,
+              description: "Settings returned",
               body: {
                 success: true,
                 data: {
-                  id: "pat_7c3f21",
-                  full_name: "Laila Ibrahim",
-                  national_id: "29501150123456",
-                  phone: "+201234567890",
-                  email: "laila.ibrahim@example.com",
-                  date_of_birth: "1995-01-15",
-                  gender: "female",
-                  blood_type: "O+",
-                  allergies: ["Penicillin"],
-                  chronic_conditions: [],
-                  emergency_contact: { name: "Omar Ibrahim", phone: "+201234500000", relation: "brother" },
-                  status: "active",
-                  created_at: "2025-11-02T08:30:00Z"
+                  tenant_name: "El Shifa Specialized Clinics",
+                  logo_url: "https://storage.delta-clinics.com/tenants/elshifa/logo.png",
+                  phone: "+20224567890",
+                  email: "info@elshifa.com",
+                  address: "15 Abbas El Akkad, Nasr City, Cairo",
+                  timezone: "Africa/Cairo",
+                  currency: "EGP",
+                  primary_color: "#059669",
+                  secondary_color: "#047857",
+                  accent_color: "#10b981",
+                  accent_soft_color: "#d1fae5",
+                  bg_color: "#f8fafc",
+                  card_bg_color: "#ffffff",
+                  theme_preset_id: "emerald"
                 }
               }
             }
           ]
         },
         {
-          id: "patients-update",
+          id: "tenant-settings-update",
           method: "PATCH",
-          path: "/patients/{patientId}",
-          title: "Update patient profile",
-          roles: ["admin", "clinic_manager", "receptionist"],
-          description: "Updates contact details, allergies, or chronic conditions.",
-          parameters: [
-            { name: "patientId", type: "path", dataType: "string", required: true, description: "Patient ID" }
-          ],
+          path: "/api/v1/settings",
+          title: "Update Branding & Theme Presets",
+          roles: ["admin", "clinic_manager"],
+          description: "Updates theme colors, theme preset (emerald, sapphire, cyan, teal, violet, ruby), and clinic identity.",
+          parameters: [],
           requestBody: {
-            phone: "+201234567891",
-            allergies: ["Penicillin", "Latex"]
+            tenant_name: "El Shifa Specialized Clinics",
+            theme_preset_id: "sapphire",
+            primary_color: "#2563eb",
+            secondary_color: "#1d4ed8",
+            accent_color: "#3b82f6",
+            accent_soft_color: "#dbeafe"
           },
           responses: [
             {
-              status: 200,
-              description: "200 OK — Profile updated",
-              body: {
-                success: true,
-                data: {
-                  id: "pat_7c3f21",
-                  full_name: "Laila Ibrahim",
-                  phone: "+201234567891",
-                  allergies: ["Penicillin", "Latex"],
-                  status: "active"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "patients-delete",
-          method: "DELETE",
-          path: "/patients/{patientId}",
-          title: "Archive patient",
-          roles: ["admin", "clinic_manager"],
-          description: "Soft deletes/archives a patient record. Medical records are retained for compliance.",
-          parameters: [
-            { name: "patientId", type: "path", dataType: "string", required: true, description: "Patient ID" }
-          ],
-          responses: [
-            { status: 204, description: "204 No Content — Patient archived", body: null },
-            {
-              status: 409,
-              description: "409 Conflict — Patient has active upcoming appointments",
-              body: { success: false, error: { code: "PATIENT_HAS_UPCOMING_APPOINTMENTS", message: "Cannot archive patient with upcoming scheduled appointments.", details: null } }
-            }
-          ]
-        },
-        {
-          id: "patients-medical-history",
-          method: "GET",
-          path: "/patients/{patientId}/medical-history",
-          title: "Full consultation & prescription history",
-          roles: ["admin", "doctor", "nurse", "patient"],
-          description: "Fetches full medical timeline including consultations, vitals, diagnoses, and prescriptions.",
-          parameters: [
-            { name: "patientId", type: "path", dataType: "string", required: true, description: "Patient ID" },
-            { name: "page", type: "query", dataType: "integer", required: false, default: "1", description: "Page number" },
-            { name: "limit", type: "query", dataType: "integer", required: false, default: "20", description: "Items per page" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Medical history timeline",
-              body: {
-                success: true,
-                data: {
-                  patient_id: "pat_7c3f21",
-                  consultations: [
-                    {
-                      id: "cst_3d8f42",
-                      date: "2026-07-20T10:00:00Z",
-                      doctor_name: "Dr. Ahmed Hassan",
-                      diagnosis: "Seasonal allergic rhinitis",
-                      prescriptions: ["rx_6a1c90"]
-                    }
-                  ]
-                },
-                meta: { page: 1, limit: 20, total: 4, total_pages: 1 }
-              }
-            }
-          ]
-        },
-        {
-          id: "patients-appointments",
-          method: "GET",
-          path: "/patients/{patientId}/appointments",
-          title: "Patient's appointments list",
-          roles: ["admin", "clinic_manager", "doctor", "receptionist", "patient"],
-          description: "Retrieves list of appointments for a specified patient.",
-          parameters: [
-            { name: "patientId", type: "path", dataType: "string", required: true, description: "Patient ID" },
-            { name: "status", type: "query", dataType: "string", required: false, description: "Filter by status" },
-            { name: "date_from", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "date_to", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Appointments array",
-              body: {
-                success: true,
-                data: [
-                  {
-                    id: "apt_5e2b18",
-                    patient_id: "pat_7c3f21",
-                    doctor_id: "doc_9f1a20",
-                    clinic_id: "cli_a1b2c3",
-                    scheduled_at: "2026-08-15T11:30:00Z",
-                    status: "scheduled",
-                    type: "consultation"
-                  }
-                ],
-                meta: { page: 1, limit: 20, total: 5, total_pages: 1 }
-              }
-            }
-          ]
-        },
-        {
-          id: "patients-invoices",
-          method: "GET",
-          path: "/patients/{patientId}/invoices",
-          title: "Patient's invoices list",
-          roles: ["admin", "clinic_manager", "accountant", "patient"],
-          description: "Retrieves billing invoices associated with a patient.",
-          parameters: [
-            { name: "patientId", type: "path", dataType: "string", required: true, description: "Patient ID" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Invoices array",
-              body: {
-                success: true,
-                data: [
-                  {
-                    id: "inv_2f7e11",
-                    patient_id: "pat_7c3f21",
-                    total: 350,
-                    balance_due: 350,
-                    status: "pending"
-                  }
-                ],
-                meta: { page: 1, limit: 20, total: 3, total_pages: 1 }
-              }
+              code: 200,
+              description: "Settings updated",
+              body: { success: true, data: { theme_preset_id: "sapphire", primary_color: "#2563eb" } }
             }
           ]
         }
@@ -1219,47 +1258,55 @@ const API_DATA = {
 
     {
       id: "doctors",
-      title: "Doctors & Specialties",
-      icon: "stethoscope",
-      description: "Medical specialties, doctor profiles, weekly availability schedules, and appointments",
+      title: "Doctors, Specialties & Schedules",
+      icon: "user-md",
+      description: "Manage medical specialties, doctor profiles, multi-branch practice pricing, and weekly shift schedules",
       endpoints: [
         {
           id: "specialties-list",
           method: "GET",
-          path: "/specialties",
-          title: "List medical specialties & active doctor counts",
-          roles: ["public"],
-          description: "Returns all medical specialties available in the clinic platform along with active doctor counts. Essential for step-by-step patient booking forms (Step 1: Specialty ➔ Step 2: Doctor ➔ Step 3: Available Slot).",
+          path: "/api/v1/specialties",
+          title: "List Medical Specialties",
+          roles: ["public", "admin", "clinic_manager", "doctor", "receptionist"],
+          description: "Lists all medical specialties with active practicing doctor counts.",
+          parameters: [],
+          responses: [
+            {
+              code: 200,
+              description: "Specialties list",
+              body: {
+                success: true,
+                data: [
+                  { id: "spec_3b7a11", name: "Dermatology", description: "Skin and aesthetic care", active_doctors_count: 4 }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          id: "doctors-list",
+          method: "GET",
+          path: "/api/v1/doctors",
+          title: "List Doctors Roster",
+          roles: ["public", "admin", "clinic_manager", "doctor", "receptionist", "nurse"],
+          description: "Lists all doctor profiles with assigned specialties and branch pricing.",
           parameters: [
-            { name: "clinic_id", type: "query", dataType: "string", required: false, description: "Filter specialties available at a specific branch clinic ID (e.g. cli_a1b2c3)" }
+            { name: "specialty_id", in: "query", required: false, type: "string", description: "Filter by specialty" },
+            { name: "clinic_id", in: "query", required: false, type: "string", description: "Filter by branch location" }
           ],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Specialties list with doctor counts",
+              code: 200,
+              description: "Doctors list",
               body: {
                 success: true,
                 data: [
                   {
-                    id: "spc_derm",
-                    name: "Dermatology",
-                    arabic_name: "الجلدية والتناسلية",
-                    description: "Skin, hair, nail treatments and cosmetic procedures",
-                    active_doctors_count: 5
-                  },
-                  {
-                    id: "spc_card",
-                    name: "Cardiology",
-                    arabic_name: "أمراض القلب والأوعية الدموية",
-                    description: "Heart disease diagnosis and cardiovascular care",
-                    active_doctors_count: 3
-                  },
-                  {
-                    id: "spc_dent",
-                    name: "Dentistry",
-                    arabic_name: "طب الأسنان",
-                    description: "General dentistry, orthodontics, and oral surgery",
-                    active_doctors_count: 4
+                    id: "doc_9f1a20",
+                    full_name: "Dr. Ahmed Hassan",
+                    specialty_name: "Dermatology",
+                    license_number: "MED-EG-2018-4421",
+                    status: "active"
                   }
                 ]
               }
@@ -1267,280 +1314,26 @@ const API_DATA = {
           ]
         },
         {
-          id: "specialties-create",
-          method: "POST",
-          path: "/specialties",
-          title: "Create new medical specialty",
-          roles: ["admin"],
-          description: "Creates a new medical specialty category in the clinic system.",
-          parameters: [],
-          requestBody: {
-            name: "Neurology",
-            arabic_name: "أمراض المخ والأعصاب",
-            description: "Brain, spinal cord, and nervous system disorders"
-          },
-          responses: [
-            {
-              status: 201,
-              description: "201 Created — Specialty created",
-              body: {
-                success: true,
-                data: {
-                  id: "spc_neuro",
-                  name: "Neurology",
-                  arabic_name: "أمراض المخ والأعصاب",
-                  description: "Brain, spinal cord, and nervous system disorders",
-                  active_doctors_count: 0
-                }
-              }
-            },
-            {
-              status: 409,
-              description: "409 Conflict — Specialty already exists",
-              body: { success: false, error: { code: "SPECIALTY_ALREADY_EXISTS", message: "Specialty with this name already exists.", details: null } }
-            }
-          ]
-        },
-        {
-          id: "doctors-list",
-          method: "GET",
-          path: "/doctors",
-          title: "List doctors",
-          roles: ["authenticated"],
-          description: "Lists active doctors with filtering by specialty and branch.",
-          parameters: [
-            { name: "specialty", type: "query", dataType: "string", required: false, description: "Filter by specialty" },
-            { name: "clinic_id", type: "query", dataType: "string", required: false, description: "Filter by clinic branch ID" },
-            { name: "status", type: "query", dataType: "string", required: false, description: "active | on_leave | inactive" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Doctors list",
-              body: {
-                success: true,
-                data: [
-                  {
-                    id: "doc_9f1a20",
-                    user_id: "usr_d4e5f6",
-                    full_name: "Dr. Ahmed Hassan",
-                    specialty: "Dermatology",
-                    license_number: "EG-DERM-44821",
-                    clinic_ids: ["cli_a1b2c3"],
-                    consultation_fee: 350,
-                    status: "active"
-                  }
-                ],
-                meta: { page: 1, limit: 20, total: 7, total_pages: 1 }
-              }
-            }
-          ]
-        },
-        {
-          id: "doctors-create",
-          method: "POST",
-          path: "/doctors",
-          title: "Add doctor profile",
-          roles: ["admin", "clinic_manager"],
-          description: "Creates a doctor profile linked to an existing staff user account.",
-          parameters: [],
-          requestBody: {
-            user_id: "usr_d4e5f6",
-            specialty: "Dermatology",
-            license_number: "EG-DERM-44821",
-            clinic_ids: ["cli_a1b2c3"],
-            consultation_fee: 350,
-            bio: "10+ years in clinical dermatology."
-          },
-          responses: [
-            {
-              status: 201,
-              description: "201 Created — Doctor profile created",
-              body: {
-                success: true,
-                data: {
-                  id: "doc_9f1a20",
-                  user_id: "usr_d4e5f6",
-                  full_name: "Dr. Ahmed Hassan",
-                  specialty: "Dermatology",
-                  license_number: "EG-DERM-44821",
-                  clinic_ids: ["cli_a1b2c3"],
-                  consultation_fee: 350,
-                  bio: "10+ years in clinical dermatology.",
-                  status: "active"
-                }
-              }
-            },
-            {
-              status: 409,
-              description: "409 Conflict — License number already registered",
-              body: { success: false, error: { code: "LICENSE_ALREADY_REGISTERED", message: "A doctor with this license number already exists.", details: null } }
-            }
-          ]
-        },
-        {
-          id: "doctors-get",
-          method: "GET",
-          path: "/doctors/{doctorId}",
-          title: "Get doctor details",
-          roles: ["authenticated"],
-          description: "Fetches details of a doctor profile.",
-          parameters: [
-            { name: "doctorId", type: "path", dataType: "string", required: true, description: "Doctor ID (e.g. doc_9f1a20)" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Doctor details",
-              body: {
-                success: true,
-                data: {
-                  id: "doc_9f1a20",
-                  user_id: "usr_d4e5f6",
-                  full_name: "Dr. Ahmed Hassan",
-                  specialty: "Dermatology",
-                  license_number: "EG-DERM-44821",
-                  clinic_ids: ["cli_a1b2c3"],
-                  consultation_fee: 350,
-                  status: "active"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "doctors-update",
-          method: "PATCH",
-          path: "/doctors/{doctorId}",
-          title: "Update doctor profile",
-          roles: ["admin", "clinic_manager", "self"],
-          description: "Updates consultation fee, bio, or status (on leave).",
-          parameters: [
-            { name: "doctorId", type: "path", dataType: "string", required: true, description: "Doctor ID" }
-          ],
-          requestBody: { consultation_fee: 400, status: "on_leave" },
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Doctor updated",
-              body: {
-                success: true,
-                data: {
-                  id: "doc_9f1a20",
-                  consultation_fee: 400,
-                  status: "on_leave"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "doctors-delete",
-          method: "DELETE",
-          path: "/doctors/{doctorId}",
-          title: "Remove doctor profile",
-          roles: ["admin"],
-          description: "Removes doctor profile. Doctor must not have upcoming appointments.",
-          parameters: [
-            { name: "doctorId", type: "path", dataType: "string", required: true, description: "Doctor ID" }
-          ],
-          responses: [
-            { status: 204, description: "204 No Content — Doctor removed", body: null }
-          ]
-        },
-        {
-          id: "doctors-schedule-get",
-          method: "GET",
-          path: "/doctors/{doctorId}/schedule",
-          title: "Get weekly availability",
-          roles: ["authenticated"],
-          description: "Returns regular weekly shifts and specific date exceptions for a doctor.",
-          parameters: [
-            { name: "doctorId", type: "path", dataType: "string", required: true, description: "Doctor ID" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Weekly schedule",
-              body: {
-                success: true,
-                data: {
-                  doctor_id: "doc_9f1a20",
-                  weekly_availability: [
-                    { day_of_week: "sunday", start_time: "10:00", end_time: "18:00" },
-                    { day_of_week: "tuesday", start_time: "10:00", end_time: "18:00" }
-                  ],
-                  exceptions: [
-                    { date: "2026-08-20", is_available: false, reason: "Conference" }
-                  ]
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "doctors-schedule-put",
+          id: "doctors-sync-schedule",
           method: "PUT",
-          path: "/doctors/{doctorId}/schedule",
-          title: "Replace weekly availability",
-          roles: ["admin", "clinic_manager", "self"],
-          description: "Replaces the full weekly shift set for a doctor.",
+          path: "/api/v1/doctors/{id}/schedule",
+          title: "Sync Weekly Shift Schedule",
+          roles: ["admin", "clinic_manager", "doctor"],
+          description: "Replaces doctor's weekly recurring shift schedule and auto-generates booking slots.",
           parameters: [
-            { name: "doctorId", type: "path", dataType: "string", required: true, description: "Doctor ID" }
+            { name: "id", in: "path", required: true, type: "string", description: "Doctor ID (doc_...)" }
           ],
           requestBody: {
-            weekly_availability: [
-              { day_of_week: "sunday", start_time: "10:00", end_time: "18:00" },
-              { day_of_week: "monday", start_time: "10:00", end_time: "16:00" }
+            schedules: [
+              { clinic_id: "cli_a1b2c3", day_of_week: 1, start_time: "10:00", end_time: "16:00", slot_duration_minutes: 30, is_available: true },
+              { clinic_id: "cli_a1b2c3", day_of_week: 3, start_time: "14:00", end_time: "20:00", slot_duration_minutes: 30, is_available: true }
             ]
           },
           responses: [
             {
-              status: 200,
-              description: "200 OK — Schedule updated",
-              body: {
-                success: true,
-                data: {
-                  doctor_id: "doc_9f1a20",
-                  weekly_availability: [
-                    { day_of_week: "sunday", start_time: "10:00", end_time: "18:00" },
-                    { day_of_week: "monday", start_time: "10:00", end_time: "16:00" }
-                  ]
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "doctors-appointments",
-          method: "GET",
-          path: "/doctors/{doctorId}/appointments",
-          title: "Doctor's appointments list",
-          roles: ["admin", "clinic_manager", "receptionist", "self"],
-          description: "Lists appointments scheduled with a doctor.",
-          parameters: [
-            { name: "doctorId", type: "path", dataType: "string", required: true, description: "Doctor ID" },
-            { name: "date_from", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "date_to", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "status", type: "query", dataType: "string", required: false, description: "Appointment status" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Appointments list",
-              body: {
-                success: true,
-                data: [
-                  {
-                    id: "apt_5e2b18",
-                    patient_id: "pat_7c3f21",
-                    doctor_id: "doc_9f1a20",
-                    scheduled_at: "2026-08-15T11:30:00Z",
-                    status: "scheduled"
-                  }
-                ],
-                meta: { page: 1, limit: 20, total: 18, total_pages: 1 }
-              }
+              code: 200,
+              description: "Schedule synchronized",
+              body: { success: true, data: { message: "Doctor schedule updated successfully." } }
             }
           ]
         }
@@ -1548,611 +1341,89 @@ const API_DATA = {
     },
 
     {
-      id: "appointments",
-      title: "Appointments",
-      icon: "calendar",
-      description: "Booking, rescheduling, cancellation, front-desk check-in, and free slot finder",
+      id: "reservations",
+      title: "Appointments & In-Booking Chat",
+      icon: "calendar-check",
+      description: "Manage clinic reservations, acceptance/cancellation workflows, camera QR check-in, and patient-doctor chat threads",
       endpoints: [
         {
-          id: "appointments-list",
+          id: "reservations-list",
           method: "GET",
-          path: "/appointments",
-          title: "List / filter appointments",
-          roles: ["admin", "clinic_manager", "doctor", "nurse", "receptionist", "patient"],
-          description: "Lists appointments across clinics. Patients see only their own.",
+          path: "/api/v1/reservations",
+          title: "List Clinic Reservations",
+          roles: ["admin", "clinic_manager", "receptionist", "doctor", "nurse"],
+          description: "Lists all patient reservations with date, branch, doctor, and status filters.",
           parameters: [
-            { name: "patient_id", type: "query", dataType: "string", required: false, description: "Filter by patient ID" },
-            { name: "doctor_id", type: "query", dataType: "string", required: false, description: "Filter by doctor ID" },
-            { name: "clinic_id", type: "query", dataType: "string", required: false, description: "Filter by clinic branch ID" },
-            { name: "status", type: "query", dataType: "string", required: false, description: "scheduled | confirmed | checked_in | in_progress | completed | cancelled | no_show" },
-            { name: "date_from", type: "query", dataType: "string", required: false, description: "Filter starting ISO date" },
-            { name: "date_to", type: "query", dataType: "string", required: false, description: "Filter ending ISO date" }
+            { name: "status", in: "query", required: false, type: "string", description: "pending, accepted, confirmed, completed, cancelled" },
+            { name: "doctor_id", in: "query", required: false, type: "string", description: "Filter by doctor" },
+            { name: "date", in: "query", required: false, type: "string", description: "Filter by reservation date YYYY-MM-DD" }
           ],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Appointments list",
+              code: 200,
+              description: "Reservations list",
               body: {
                 success: true,
                 data: [
                   {
-                    id: "apt_5e2b18",
-                    patient_id: "pat_7c3f21",
-                    doctor_id: "doc_9f1a20",
-                    clinic_id: "cli_a1b2c3",
-                    scheduled_at: "2026-08-15T11:30:00Z",
-                    duration_minutes: 30,
-                    type: "consultation",
-                    status: "scheduled",
-                    reason: "Follow-up on skin rash",
-                    created_by: "usr_7b1e90"
+                    id: "res_5e2b18",
+                    patient_name: "Laila Ibrahim",
+                    doctor_name: "Dr. Ahmed Hassan",
+                    reservation_date: "2026-09-10",
+                    status: "confirmed",
+                    time_slot: "10:30 - 11:00"
                   }
-                ],
-                meta: { page: 1, limit: 20, total: 58, total_pages: 3 }
+                ]
               }
             }
           ]
         },
         {
-          id: "appointments-create",
+          id: "reservations-accept",
+          method: "PATCH",
+          path: "/api/v1/reservations/{id}/accept",
+          title: "Accept Reservation",
+          roles: ["admin", "clinic_manager", "receptionist", "doctor"],
+          description: "Transitions a pending reservation to accepted status.",
+          parameters: [
+            { name: "id", in: "path", required: true, type: "string", description: "Reservation ID (res_...)" }
+          ],
+          responses: [
+            {
+              code: 200,
+              description: "Reservation accepted",
+              body: { success: true, data: { id: "res_5e2b18", status: "accepted" } }
+            }
+          ]
+        },
+        {
+          id: "reservations-messages",
           method: "POST",
-          path: "/appointments",
-          title: "Book appointment",
-          roles: ["admin", "clinic_manager", "receptionist", "patient"],
-          description: "Books a new appointment slot for a patient. Checks slot availability.",
-          parameters: [],
+          path: "/api/v1/reservations/{id}/messages",
+          title: "Send In-Booking Chat Message",
+          roles: ["admin", "receptionist", "doctor", "patient"],
+          description: "Sends a direct message attached to an appointment booking thread (e.g. pre-visit guidelines).",
+          parameters: [
+            { name: "id", in: "path", required: true, type: "string", description: "Reservation ID" }
+          ],
           requestBody: {
-            patient_id: "pat_7c3f21",
-            doctor_id: "doc_9f1a20",
-            clinic_id: "cli_a1b2c3",
-            scheduled_at: "2026-08-15T11:30:00Z",
-            duration_minutes: 30,
-            type: "consultation",
-            reason: "Follow-up on skin rash"
+            message: "Please arrive 15 minutes before your slot with previous lab test results."
           },
           responses: [
             {
-              status: 201,
-              description: "201 Created — Appointment booked",
+              code: 201,
+              description: "Message sent",
               body: {
                 success: true,
                 data: {
-                  id: "apt_5e2b18",
-                  patient_id: "pat_7c3f21",
-                  doctor_id: "doc_9f1a20",
-                  clinic_id: "cli_a1b2c3",
-                  scheduled_at: "2026-08-15T11:30:00Z",
-                  duration_minutes: 30,
-                  type: "consultation",
-                  status: "scheduled",
-                  reason: "Follow-up on skin rash",
-                  created_by: "usr_7b1e90"
-                }
-              }
-            },
-            {
-              status: 409,
-              description: "409 Conflict — Target slot unavailable",
-              body: { success: false, error: { code: "SLOT_UNAVAILABLE", message: "Doctor already has an appointment at this time.", details: null } }
-            }
-          ]
-        },
-        {
-          id: "appointments-get",
-          method: "GET",
-          path: "/appointments/{appointmentId}",
-          title: "Get appointment details",
-          roles: ["admin", "clinic_manager", "doctor", "nurse", "receptionist", "patient"],
-          description: "Fetches details for a specific appointment ID.",
-          parameters: [
-            { name: "appointmentId", type: "path", dataType: "string", required: true, description: "Appointment ID (e.g. apt_5e2b18)" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Appointment details",
-              body: {
-                success: true,
-                data: {
-                  id: "apt_5e2b18",
-                  patient_id: "pat_7c3f21",
-                  doctor_id: "doc_9f1a20",
-                  clinic_id: "cli_a1b2c3",
-                  scheduled_at: "2026-08-15T11:30:00Z",
-                  duration_minutes: 30,
-                  type: "consultation",
-                  status: "scheduled",
-                  reason: "Follow-up on skin rash"
+                  id: "msg_441290",
+                  reservation_id: "res_5e2b18",
+                  sender_name: "Reception Desk",
+                  message: "Please arrive 15 minutes before your slot with previous lab test results.",
+                  created_at: "2026-09-02T10:00:00Z"
                 }
               }
             }
-          ]
-        },
-        {
-          id: "appointments-update",
-          method: "PATCH",
-          path: "/appointments/{appointmentId}",
-          title: "Reschedule or edit appointment",
-          roles: ["admin", "clinic_manager", "receptionist"],
-          description: "Reschedules or edits appointment details. Changing scheduled_at re-checks slot availability.",
-          parameters: [
-            { name: "appointmentId", type: "path", dataType: "string", required: true, description: "Appointment ID" }
-          ],
-          requestBody: { scheduled_at: "2026-08-16T09:00:00Z" },
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Appointment updated",
-              body: {
-                success: true,
-                data: {
-                  id: "apt_5e2b18",
-                  scheduled_at: "2026-08-16T09:00:00Z",
-                  status: "scheduled"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "appointments-delete",
-          method: "DELETE",
-          path: "/appointments/{appointmentId}",
-          title: "Cancel appointment",
-          roles: ["admin", "clinic_manager", "receptionist", "patient"],
-          description: "Sets appointment status to cancelled (retained for history).",
-          parameters: [
-            { name: "appointmentId", type: "path", dataType: "string", required: true, description: "Appointment ID" }
-          ],
-          responses: [
-            { status: 204, description: "204 No Content — Appointment cancelled", body: null }
-          ]
-        },
-        {
-          id: "appointments-checkin",
-          method: "PATCH",
-          path: "/appointments/{appointmentId}/check-in",
-          title: "Front-desk check-in",
-          roles: ["admin", "clinic_manager", "receptionist", "nurse"],
-          description: "Marks a patient as checked-in upon arrival at the clinic reception.",
-          parameters: [
-            { name: "appointmentId", type: "path", dataType: "string", required: true, description: "Appointment ID" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Checked in",
-              body: {
-                success: true,
-                data: { id: "apt_5e2b18", status: "checked_in", checked_in_at: "2026-08-15T11:25:00Z" }
-              }
-            }
-          ]
-        },
-        {
-          id: "appointments-status",
-          method: "PATCH",
-          path: "/appointments/{appointmentId}/status",
-          title: "Transition appointment status",
-          roles: ["admin", "clinic_manager", "doctor", "receptionist"],
-          description: "Updates state machine status (e.g. checked_in → in_progress → completed, or no_show).",
-          parameters: [
-            { name: "appointmentId", type: "path", dataType: "string", required: true, description: "Appointment ID" }
-          ],
-          requestBody: { status: "no_show" },
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Status updated",
-              body: {
-                success: true,
-                data: { id: "apt_5e2b18", status: "no_show" }
-              }
-            }
-          ]
-        },
-        {
-          id: "appointments-slots",
-          method: "GET",
-          path: "/appointments/available-slots",
-          title: "Free slot finder",
-          roles: ["admin", "clinic_manager", "receptionist", "doctor", "patient"],
-          description: "Finds open time slots for a doctor on a specific date.",
-          parameters: [
-            { name: "doctor_id", type: "query", dataType: "string", required: true, description: "Target doctor ID" },
-            { name: "date", type: "query", dataType: "string", required: true, description: "Date in YYYY-MM-DD" },
-            { name: "duration_minutes", type: "query", dataType: "integer", required: false, default: "30", description: "Slot length in minutes" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Open slots list",
-              body: {
-                success: true,
-                data: {
-                  doctor_id: "doc_9f1a20",
-                  date: "2026-08-15",
-                  slots: ["10:00", "10:30", "11:00", "14:00", "14:30"]
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "appointments-qrcode-get",
-          method: "GET",
-          path: "/appointments/{appointmentId}/qr-code",
-          title: "Get appointment QR code for patient",
-          roles: ["admin", "clinic_manager", "receptionist", "doctor", "patient"],
-          description: "Generates or retrieves a secure QR Code payload and renderable QR image URL for a booked appointment. The patient receives this QR code to present upon arrival at the clinic.",
-          parameters: [
-            { name: "appointmentId", type: "path", dataType: "string", required: true, description: "Target appointment ID (e.g. apt_5e2b18)" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — QR Code payload & image URL",
-              body: {
-                success: true,
-                data: {
-                  appointment_id: "apt_5e2b18",
-                  patient_name: "Laila Ibrahim",
-                  qr_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.qr_apt_5e2b18_token_sample",
-                  qr_image_url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAAD...",
-                  expires_at: "2026-08-15T23:59:59Z"
-                }
-              }
-            },
-            {
-              status: 404,
-              description: "404 Not Found — Appointment not found",
-              body: { success: false, error: { code: "RESOURCE_NOT_FOUND", message: "Appointment with id 'apt_5e2b18' was not found.", details: null } }
-            }
-          ]
-        },
-        {
-          id: "appointments-scan-qr",
-          method: "POST",
-          path: "/appointments/check-in/scan-qr",
-          title: "Scan patient QR code & automatic check-in",
-          roles: ["admin", "clinic_manager", "receptionist", "nurse"],
-          description: "Scans and validates a patient's QR code via reception desk or kiosk camera scanner. Automatically marks the appointment as checked_in and logs arrival time without requiring manual dashboard lookup.",
-          parameters: [],
-          requestBody: {
-            qr_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.qr_apt_5e2b18_token_sample"
-          },
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Automatically checked in",
-              body: {
-                success: true,
-                data: {
-                  appointment_id: "apt_5e2b18",
-                  patient_id: "pat_7c3f21",
-                  patient_name: "Laila Ibrahim",
-                  doctor_name: "Dr. Ahmed Hassan",
-                  status: "checked_in",
-                  checked_in_at: "2026-08-15T11:24:12Z",
-                  message: "Patient Laila Ibrahim successfully checked in automatically via QR scan."
-                }
-              }
-            },
-            {
-              status: 400,
-              description: "400 Bad Request — Invalid or expired QR code token",
-              body: { success: false, error: { code: "INVALID_OR_EXPIRED_QR_TOKEN", message: "The scanned QR token is invalid or expired.", details: null } }
-            },
-            {
-              status: 409,
-              description: "409 Conflict — Patient already checked in",
-              body: { success: false, error: { code: "APPOINTMENT_ALREADY_CHECKED_IN", message: "Patient has already checked in for this appointment.", details: null } }
-            }
-          ]
-        }
-      ]
-    },
-
-
-    {
-      id: "consultations",
-      title: "Consultations (Medical Records)",
-      icon: "file-medical",
-      description: "Clinical documentation, vital signs, chief complaints, and diagnoses recorded by doctors",
-      endpoints: [
-        {
-          id: "consultations-list",
-          method: "GET",
-          path: "/consultations",
-          title: "List consultations",
-          roles: ["admin", "doctor", "nurse"],
-          description: "Lists clinical consultation entries with patient and date range filters.",
-          parameters: [
-            { name: "patient_id", type: "query", dataType: "string", required: false, description: "Filter by patient ID" },
-            { name: "doctor_id", type: "query", dataType: "string", required: false, description: "Filter by doctor ID" },
-            { name: "date_from", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "date_to", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Consultations list",
-              body: {
-                success: true,
-                data: [
-                  {
-                    id: "cst_3d8f42",
-                    appointment_id: "apt_5e2b18",
-                    patient_id: "pat_7c3f21",
-                    doctor_id: "doc_9f1a20",
-                    chief_complaint: "Recurring itchy rash on forearm",
-                    diagnosis: "Contact dermatitis"
-                  }
-                ],
-                meta: { page: 1, limit: 20, total: 42, total_pages: 3 }
-              }
-            }
-          ]
-        },
-        {
-          id: "consultations-create",
-          method: "POST",
-          path: "/consultations",
-          title: "Record consultation",
-          roles: ["doctor"],
-          description: "Records clinical findings against a checked_in/in_progress appointment, automatically completing it.",
-          parameters: [],
-          requestBody: {
-            appointment_id: "apt_5e2b18",
-            chief_complaint: "Recurring itchy rash on forearm",
-            diagnosis: "Contact dermatitis",
-            vitals: {
-              blood_pressure: "120/80",
-              heart_rate: 72,
-              temperature_c: 36.8,
-              weight_kg: 68,
-              height_cm: 170
-            },
-            notes: "Advised to avoid the suspected detergent brand.",
-            follow_up_required: true,
-            follow_up_date: "2026-08-29"
-          },
-          responses: [
-            {
-              status: 201,
-              description: "201 Created — Consultation recorded",
-              body: {
-                success: true,
-                data: {
-                  id: "cst_3d8f42",
-                  appointment_id: "apt_5e2b18",
-                  patient_id: "pat_7c3f21",
-                  doctor_id: "doc_9f1a20",
-                  chief_complaint: "Recurring itchy rash on forearm",
-                  diagnosis: "Contact dermatitis",
-                  vitals: { blood_pressure: "120/80", heart_rate: 72, temperature_c: 36.8, weight_kg: 68, height_cm: 170 },
-                  notes: "Advised to avoid the suspected detergent brand.",
-                  follow_up_required: true,
-                  follow_up_date: "2026-08-29"
-                }
-              }
-            },
-            {
-              status: 409,
-              description: "409 Conflict — Appointment not in checked_in or in_progress status",
-              body: { success: false, error: { code: "APPOINTMENT_NOT_CHECKED_IN", message: "Consultation can only be started for checked-in appointments.", details: null } }
-            }
-          ]
-        },
-        {
-          id: "consultations-get",
-          method: "GET",
-          path: "/consultations/{consultationId}",
-          title: "Get consultation record",
-          roles: ["admin", "doctor", "nurse", "patient"],
-          description: "Fetches full consultation record with vitals and associated prescription IDs.",
-          parameters: [
-            { name: "consultationId", type: "path", dataType: "string", required: true, description: "Consultation ID (e.g. cst_3d8f42)" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Consultation record",
-              body: {
-                success: true,
-                data: {
-                  id: "cst_3d8f42",
-                  appointment_id: "apt_5e2b18",
-                  patient_id: "pat_7c3f21",
-                  doctor_id: "doc_9f1a20",
-                  chief_complaint: "Recurring itchy rash on forearm",
-                  diagnosis: "Contact dermatitis",
-                  vitals: { blood_pressure: "120/80", heart_rate: 72, temperature_c: 36.8, weight_kg: 68, height_cm: 170 },
-                  prescriptions: ["rx_6a1c90"]
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "consultations-update",
-          method: "PATCH",
-          path: "/consultations/{consultationId}",
-          title: "Amend consultation record",
-          roles: ["admin", "doctor"],
-          description: "Amends notes or details. Authoring doctors can amend within 24 hours of creation.",
-          parameters: [
-            { name: "consultationId", type: "path", dataType: "string", required: true, description: "Consultation ID" }
-          ],
-          requestBody: { notes: "Updated: symptoms improved after avoiding the detergent." },
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Consultation amended",
-              body: {
-                success: true,
-                data: {
-                  id: "cst_3d8f42",
-                  notes: "Updated: symptoms improved after avoiding the detergent."
-                }
-              }
-            },
-            {
-              status: 403,
-              description: "403 Forbidden — Edit window expired (24 hours passed)",
-              body: { success: false, error: { code: "EDIT_WINDOW_EXPIRED", message: "Consultations can only be edited within 24 hours of creation.", details: null } }
-            }
-          ]
-        }
-      ]
-    },
-
-    {
-      id: "prescriptions",
-      title: "Prescriptions",
-      icon: "pills",
-      description: "Issuing medication prescriptions, tracking fulfillment status, and cancellation",
-      endpoints: [
-        {
-          id: "prescriptions-list",
-          method: "GET",
-          path: "/prescriptions",
-          title: "List prescriptions",
-          roles: ["admin", "doctor", "nurse", "patient"],
-          description: "Lists prescriptions issued across the clinic system.",
-          parameters: [
-            { name: "patient_id", type: "query", dataType: "string", required: false, description: "Filter by patient ID" },
-            { name: "doctor_id", type: "query", dataType: "string", required: false, description: "Filter by doctor ID" },
-            { name: "status", type: "query", dataType: "string", required: false, description: "active | fulfilled | cancelled" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Prescriptions list",
-              body: {
-                success: true,
-                data: [
-                  {
-                    id: "rx_6a1c90",
-                    consultation_id: "cst_3d8f42",
-                    patient_id: "pat_7c3f21",
-                    doctor_id: "doc_9f1a20",
-                    status: "active",
-                    issued_at: "2026-07-20T10:15:00Z"
-                  }
-                ],
-                meta: { page: 1, limit: 20, total: 19, total_pages: 1 }
-              }
-            }
-          ]
-        },
-        {
-          id: "prescriptions-create",
-          method: "POST",
-          path: "/prescriptions",
-          title: "Issue prescription",
-          roles: ["doctor"],
-          description: "Issues a new prescription tied to a consultation record.",
-          parameters: [],
-          requestBody: {
-            consultation_id: "cst_3d8f42",
-            medications: [
-              {
-                inventory_item_id: "itm_1a9c77",
-                name: "Cetirizine 10mg",
-                dosage: "1 tablet",
-                frequency: "once daily",
-                duration_days: 10,
-                instructions: "Take at night."
-              }
-            ]
-          },
-          responses: [
-            {
-              status: 201,
-              description: "201 Created — Prescription issued",
-              body: {
-                success: true,
-                data: {
-                  id: "rx_6a1c90",
-                  consultation_id: "cst_3d8f42",
-                  patient_id: "pat_7c3f21",
-                  doctor_id: "doc_9f1a20",
-                  medications: [
-                    { inventory_item_id: "itm_1a9c77", name: "Cetirizine 10mg", dosage: "1 tablet", frequency: "once daily", duration_days: 10, instructions: "Take at night." }
-                  ],
-                  status: "active",
-                  issued_at: "2026-08-12T12:00:00Z"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "prescriptions-get",
-          method: "GET",
-          path: "/prescriptions/{prescriptionId}",
-          title: "Get prescription details",
-          roles: ["admin", "doctor", "nurse", "patient"],
-          description: "Fetches prescription details and medication instructions.",
-          parameters: [
-            { name: "prescriptionId", type: "path", dataType: "string", required: true, description: "Prescription ID (e.g. rx_6a1c90)" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Prescription details",
-              body: {
-                success: true,
-                data: {
-                  id: "rx_6a1c90",
-                  consultation_id: "cst_3d8f42",
-                  patient_id: "pat_7c3f21",
-                  doctor_id: "doc_9f1a20",
-                  medications: [
-                    { inventory_item_id: "itm_1a9c77", name: "Cetirizine 10mg", dosage: "1 tablet", frequency: "once daily", duration_days: 10, instructions: "Take at night." }
-                  ],
-                  status: "active",
-                  issued_at: "2026-07-20T10:15:00Z"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "prescriptions-update",
-          method: "PATCH",
-          path: "/prescriptions/{prescriptionId}",
-          title: "Update prescription status",
-          roles: ["admin", "doctor"],
-          description: "Updates prescription status (e.g. to fulfilled).",
-          parameters: [
-            { name: "prescriptionId", type: "path", dataType: "string", required: true, description: "Prescription ID" }
-          ],
-          requestBody: { status: "fulfilled" },
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Status updated",
-              body: {
-                success: true,
-                data: { id: "rx_6a1c90", status: "fulfilled" }
-              }
-            }
-          ]
-        },
-        {
-          id: "prescriptions-delete",
-          method: "DELETE",
-          path: "/prescriptions/{prescriptionId}",
-          title: "Cancel prescription",
-          roles: ["admin", "doctor"],
-          description: "Sets prescription status to cancelled (retained for medical audit trail).",
-          parameters: [
-            { name: "prescriptionId", type: "path", dataType: "string", required: true, description: "Prescription ID" }
-          ],
-          responses: [
-            { status: 204, description: "204 No Content — Prescription cancelled", body: null }
           ]
         }
       ]
@@ -2160,235 +1431,36 @@ const API_DATA = {
 
     {
       id: "billing",
-      title: "Billing & Invoices",
-      icon: "credit-card",
-      description: "Invoicing, payment processing, idempotency protection, and refunds",
+      title: "Billing, Invoices & Financials",
+      icon: "cash-register",
+      description: "Manage patient invoices, itemized bills, payment settlements (Cash, Card, Instapay, Vodafone Cash), refunds, and branch financial statements",
       endpoints: [
         {
           id: "invoices-list",
           method: "GET",
-          path: "/invoices",
-          title: "List invoices",
-          roles: ["admin", "clinic_manager", "accountant", "receptionist", "patient"],
-          description: "Retrieves list of billing invoices.",
+          path: "/api/v1/invoices",
+          title: "List Invoices",
+          roles: ["admin", "clinic_manager", "accountant", "receptionist"],
+          description: "Lists patient invoices with payment status, outstanding balance, and date range filters.",
           parameters: [
-            { name: "patient_id", type: "query", dataType: "string", required: false, description: "Filter by patient ID" },
-            { name: "status", type: "query", dataType: "string", required: false, description: "draft | pending | partially_paid | paid | void" },
-            { name: "date_from", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "date_to", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" }
+            { name: "status", in: "query", required: false, type: "string", description: "draft, issued, paid, partially_paid, void" },
+            { name: "patient_id", in: "query", required: false, type: "string", description: "Filter by patient" }
           ],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Invoices list",
+              code: 200,
+              description: "Invoices list",
               body: {
                 success: true,
                 data: [
                   {
                     id: "inv_2f7e11",
                     patient_id: "pat_7c3f21",
-                    appointment_id: "apt_5e2b18",
-                    clinic_id: "cli_a1b2c3",
-                    items: [{ description: "Dermatology consultation", quantity: 1, unit_price: 350, total: 350 }],
-                    subtotal: 350,
-                    discount: 0,
-                    tax: 0,
-                    total: 350,
-                    amount_paid: 0,
-                    balance_due: 350,
-                    status: "pending",
-                    due_date: "2026-08-22"
-                  }
-                ],
-                meta: { page: 1, limit: 20, total: 92, total_pages: 5 }
-              }
-            }
-          ]
-        },
-        {
-          id: "invoices-create",
-          method: "POST",
-          path: "/invoices",
-          title: "Create invoice",
-          roles: ["admin", "clinic_manager", "receptionist", "accountant"],
-          description: "Creates an invoice record. Accepts optional Idempotency-Key header.",
-          parameters: [
-            { name: "Idempotency-Key", type: "header", dataType: "string", required: false, description: "Client unique key to prevent duplicate creation" }
-          ],
-          requestBody: {
-            patient_id: "pat_7c3f21",
-            appointment_id: "apt_5e2b18",
-            clinic_id: "cli_a1b2c3",
-            items: [{ description: "Dermatology consultation", quantity: 1, unit_price: 350 }],
-            discount: 0,
-            tax: 0,
-            due_date: "2026-08-22"
-          },
-          responses: [
-            {
-              status: 201,
-              description: "201 Created — Invoice generated",
-              body: {
-                success: true,
-                data: {
-                  id: "inv_2f7e11",
-                  patient_id: "pat_7c3f21",
-                  appointment_id: "apt_5e2b18",
-                  clinic_id: "cli_a1b2c3",
-                  items: [{ description: "Dermatology consultation", quantity: 1, unit_price: 350, total: 350 }],
-                  subtotal: 350,
-                  discount: 0,
-                  tax: 0,
-                  total: 350,
-                  amount_paid: 0,
-                  balance_due: 350,
-                  status: "pending",
-                  due_date: "2026-08-22"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "invoices-get",
-          method: "GET",
-          path: "/invoices/{invoiceId}",
-          title: "Get invoice details",
-          roles: ["admin", "clinic_manager", "accountant", "receptionist", "patient"],
-          description: "Fetches invoice line items and payment balance status.",
-          parameters: [
-            { name: "invoiceId", type: "path", dataType: "string", required: true, description: "Invoice ID (e.g. inv_2f7e11)" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Invoice details",
-              body: {
-                success: true,
-                data: {
-                  id: "inv_2f7e11",
-                  patient_id: "pat_7c3f21",
-                  appointment_id: "apt_5e2b18",
-                  clinic_id: "cli_a1b2c3",
-                  items: [{ description: "Dermatology consultation", quantity: 1, unit_price: 350, total: 350 }],
-                  subtotal: 350,
-                  discount: 0,
-                  tax: 0,
-                  total: 350,
-                  amount_paid: 0,
-                  balance_due: 350,
-                  status: "pending",
-                  due_date: "2026-08-22"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "invoices-update",
-          method: "PATCH",
-          path: "/invoices/{invoiceId}",
-          title: "Edit draft invoice",
-          roles: ["admin", "clinic_manager", "accountant"],
-          description: "Modifies invoice line items or discounts. Only invoices in draft status can be edited.",
-          parameters: [
-            { name: "invoiceId", type: "path", dataType: "string", required: true, description: "Invoice ID" }
-          ],
-          requestBody: { discount: 50 },
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Invoice updated",
-              body: {
-                success: true,
-                data: { id: "inv_2f7e11", discount: 50, total: 300, balance_due: 300 }
-              }
-            },
-            {
-              status: 409,
-              description: "409 Conflict — Invoice not in draft status",
-              body: { success: false, error: { code: "INVOICE_NOT_EDITABLE", message: "Only draft invoices can be edited.", details: null } }
-            }
-          ]
-        },
-        {
-          id: "invoices-delete",
-          method: "DELETE",
-          path: "/invoices/{invoiceId}",
-          title: "Void invoice",
-          roles: ["admin", "clinic_manager"],
-          description: "Voids an unpaid invoice.",
-          parameters: [
-            { name: "invoiceId", type: "path", dataType: "string", required: true, description: "Invoice ID" }
-          ],
-          responses: [
-            { status: 204, description: "204 No Content — Invoice voided", body: null }
-          ]
-        },
-        {
-          id: "invoices-payments-create",
-          method: "POST",
-          path: "/invoices/{invoiceId}/payments",
-          title: "Record payment",
-          roles: ["admin", "clinic_manager", "receptionist", "accountant"],
-          description: "Records cash/card/insurance payment on an invoice, updating balance_due.",
-          parameters: [
-            { name: "invoiceId", type: "path", dataType: "string", required: true, description: "Invoice ID" },
-            { name: "Idempotency-Key", type: "header", dataType: "string", required: false, description: "Client unique key" }
-          ],
-          requestBody: {
-            amount: 350,
-            method: "card",
-            reference_number: "TXN-8823410"
-          },
-          responses: [
-            {
-              status: 201,
-              description: "201 Created — Payment recorded",
-              body: {
-                success: true,
-                data: {
-                  id: "pay_8b4d33",
-                  invoice_id: "inv_2f7e11",
-                  amount: 350,
-                  method: "card",
-                  reference_number: "TXN-8823410",
-                  received_by: "usr_7b1e90",
-                  paid_at: "2026-08-12T12:05:00Z"
-                }
-              }
-            },
-            {
-              status: 409,
-              description: "409 Conflict — Overpayment not allowed",
-              body: { success: false, error: { code: "OVERPAYMENT_NOT_ALLOWED", message: "Payment amount exceeds remaining balance due.", details: null } }
-            }
-          ]
-        },
-        {
-          id: "invoices-payments-list",
-          method: "GET",
-          path: "/invoices/{invoiceId}/payments",
-          title: "List payments on invoice",
-          roles: ["admin", "clinic_manager", "accountant", "receptionist", "patient"],
-          description: "Lists all payment transactions recorded against a specific invoice.",
-          parameters: [
-            { name: "invoiceId", type: "path", dataType: "string", required: true, description: "Invoice ID" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Payment history array",
-              body: {
-                success: true,
-                data: [
-                  {
-                    id: "pay_8b4d33",
-                    invoice_id: "inv_2f7e11",
-                    amount: 350,
-                    method: "card",
-                    reference_number: "TXN-8823410",
-                    paid_at: "2026-08-12T12:05:00Z"
+                    total: 400,
+                    amount_paid: 400,
+                    balance_due: 0,
+                    status: "paid",
+                    due_at: "2026-09-10"
                   }
                 ]
               }
@@ -2396,33 +1468,61 @@ const API_DATA = {
           ]
         },
         {
-          id: "invoices-refund",
+          id: "invoices-record-payment",
           method: "POST",
-          path: "/invoices/{invoiceId}/refund",
-          title: "Refund a payment",
-          roles: ["admin", "clinic_manager"],
-          description: "Processes a refund for a previously recorded payment transaction.",
+          path: "/api/v1/invoices/{id}/payments",
+          title: "Record Payment Settlement",
+          roles: ["admin", "clinic_manager", "accountant", "receptionist"],
+          description: "Records a payment against an invoice. Supports partial payments, full settlement, and multiple payment methods.",
           parameters: [
-            { name: "invoiceId", type: "path", dataType: "string", required: true, description: "Invoice ID" }
+            { name: "id", in: "path", required: true, type: "string", description: "Invoice ID (inv_...)" }
           ],
           requestBody: {
-            payment_id: "pay_8b4d33",
-            amount: 350,
-            reason: "Appointment cancelled after payment"
+            amount: 400,
+            method: "instapay",
+            transaction_reference: "TXN-8823410",
+            notes: "Settled via Instapay"
           },
           responses: [
             {
-              status: 201,
-              description: "201 Created — Refund processed",
+              code: 201,
+              description: "Payment recorded",
               body: {
                 success: true,
                 data: {
-                  id: "rfd_5c1a02",
-                  payment_id: "pay_8b4d33",
-                  amount: 350,
-                  reason: "Appointment cancelled after payment",
-                  status: "processed",
-                  processed_at: "2026-08-12T13:00:00Z"
+                  id: "pay_8b4d33",
+                  invoice_id: "inv_2f7e11",
+                  amount: 400,
+                  method: "instapay",
+                  paid_at: "2026-09-02T10:15:00Z"
+                }
+              }
+            }
+          ]
+        },
+        {
+          id: "reports-financial",
+          method: "GET",
+          path: "/api/v1/reports/financial",
+          title: "Clinic Financial Statement",
+          roles: ["admin", "clinic_manager", "accountant"],
+          description: "Generates comprehensive financial reporting: gross revenue, operational expenses, net profit, unpaid balances, and payment method breakdown.",
+          parameters: [
+            { name: "date_from", in: "query", required: false, type: "string", description: "YYYY-MM-DD" },
+            { name: "date_to", in: "query", required: false, type: "string", description: "YYYY-MM-DD" }
+          ],
+          responses: [
+            {
+              code: 200,
+              description: "Financial statement",
+              body: {
+                success: true,
+                data: {
+                  gross_revenue: 124500,
+                  total_expenses: 32000,
+                  net_profit: 92500,
+                  outstanding_balance: 8200,
+                  payment_methods: { cash: 60000, card: 35000, instapay: 20000, vodafone_cash: 9500 }
                 }
               }
             }
@@ -2433,216 +1533,62 @@ const API_DATA = {
 
     {
       id: "inventory",
-      title: "Inventory & Pharmacy",
-      icon: "box-seam",
-      description: "Stock management, reorder alerts, cost tracking, and stock level adjustments",
+      title: "Medical Inventory & Stock Logs",
+      icon: "boxes",
+      description: "Track medical consumables, pharmacy items, low stock alerts, and atomic stock adjustments (Addition, Deduction, Dispensing, Damage)",
       endpoints: [
         {
           id: "inventory-list",
           method: "GET",
-          path: "/inventory/items",
-          title: "List stock items",
-          roles: ["admin", "clinic_manager", "doctor", "nurse"],
-          description: "Lists inventory items with stock levels, cost, and reorder threshold.",
+          path: "/api/v1/inventory",
+          title: "List Inventory Items",
+          roles: ["admin", "clinic_manager", "pharmacist", "inventory_manager", "nurse"],
+          description: "Lists all medical items and consumables with real-time stock counts.",
           parameters: [
-            { name: "category", type: "query", dataType: "string", required: false, description: "medicine | supply" },
-            { name: "clinic_id", type: "query", dataType: "string", required: false, description: "Filter by clinic branch ID" },
-            { name: "search", type: "query", dataType: "string", required: false, description: "Search by item name" }
+            { name: "search", in: "query", required: false, type: "string", description: "Search by item name or SKU" }
           ],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Inventory items list",
+              code: 200,
+              description: "Inventory items",
               body: {
                 success: true,
                 data: [
-                  {
-                    id: "itm_1a9c77",
-                    name: "Cetirizine 10mg",
-                    category: "medicine",
-                    unit: "box",
-                    quantity_in_stock: 120,
-                    reorder_level: 20,
-                    unit_cost: 45,
-                    expiry_date: "2027-03-01",
-                    clinic_id: "cli_a1b2c3"
-                  }
-                ],
-                meta: { page: 1, limit: 20, total: 64, total_pages: 4 }
+                  { id: "itm_1a9c77", name: "Sterile Gauze Pads 10x10", sku: "MED-GZ-100", quantity: 120, reorder_level: 25, unit_price: 15.50 }
+                ]
               }
             }
           ]
         },
         {
-          id: "inventory-create",
+          id: "inventory-adjust",
           method: "POST",
-          path: "/inventory/items",
-          title: "Add stock item",
-          roles: ["admin", "clinic_manager"],
-          description: "Registers a new medicine or clinical supply item in stock.",
-          parameters: [],
+          path: "/api/v1/inventory/{id}/adjustments",
+          title: "Record Atomic Stock Adjustment",
+          roles: ["admin", "clinic_manager", "nurse", "pharmacist"],
+          description: "Records an atomic adjustment to item stock (addition, deduction, dispensing, damage, expired, correction) with an audit trail.",
+          parameters: [
+            { name: "id", in: "path", required: true, type: "string", description: "Inventory Item ID" }
+          ],
           requestBody: {
-            name: "Cetirizine 10mg",
-            category: "medicine",
-            unit: "box",
-            quantity_in_stock: 120,
-            reorder_level: 20,
-            unit_cost: 45,
-            expiry_date: "2027-03-01",
-            clinic_id: "cli_a1b2c3"
+            quantity: -5,
+            type: "dispensing",
+            notes: "Dispensed for procedure in Room 2."
           },
           responses: [
             {
-              status: 201,
-              description: "201 Created — Item registered",
-              body: {
-                success: true,
-                data: {
-                  id: "itm_1a9c77",
-                  name: "Cetirizine 10mg",
-                  category: "medicine",
-                  unit: "box",
-                  quantity_in_stock: 120,
-                  reorder_level: 20,
-                  unit_cost: 45,
-                  expiry_date: "2027-03-01",
-                  clinic_id: "cli_a1b2c3"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "inventory-get",
-          method: "GET",
-          path: "/inventory/items/{itemId}",
-          title: "Get item details",
-          roles: ["admin", "clinic_manager", "doctor", "nurse"],
-          description: "Fetches details of a specific inventory item.",
-          parameters: [
-            { name: "itemId", type: "path", dataType: "string", required: true, description: "Item ID (e.g. itm_1a9c77)" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Item details",
-              body: {
-                success: true,
-                data: {
-                  id: "itm_1a9c77",
-                  name: "Cetirizine 10mg",
-                  category: "medicine",
-                  unit: "box",
-                  quantity_in_stock: 120,
-                  reorder_level: 20,
-                  unit_cost: 45,
-                  expiry_date: "2027-03-01",
-                  clinic_id: "cli_a1b2c3"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "inventory-update",
-          method: "PATCH",
-          path: "/inventory/items/{itemId}",
-          title: "Update item details",
-          roles: ["admin", "clinic_manager"],
-          description: "Updates reorder level, unit cost, or expiry date.",
-          parameters: [
-            { name: "itemId", type: "path", dataType: "string", required: true, description: "Item ID" }
-          ],
-          requestBody: { reorder_level: 30, unit_cost: 48 },
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Item updated",
-              body: {
-                success: true,
-                data: { id: "itm_1a9c77", reorder_level: 30, unit_cost: 48 }
-              }
-            }
-          ]
-        },
-        {
-          id: "inventory-delete",
-          method: "DELETE",
-          path: "/inventory/items/{itemId}",
-          title: "Remove item",
-          roles: ["admin", "clinic_manager"],
-          description: "Removes stock item. Item cannot be deleted if referenced in active prescriptions.",
-          parameters: [
-            { name: "itemId", type: "path", dataType: "string", required: true, description: "Item ID" }
-          ],
-          responses: [
-            { status: 204, description: "204 No Content — Item removed", body: null },
-            {
-              status: 409,
-              description: "409 Conflict — Item referenced by active prescriptions",
-              body: { success: false, error: { code: "ITEM_REFERENCED_BY_ACTIVE_PRESCRIPTIONS", message: "Cannot delete item active in prescriptions.", details: null } }
-            }
-          ]
-        },
-        {
-          id: "inventory-adjustments",
-          method: "POST",
-          path: "/inventory/items/{itemId}/stock-adjustments",
-          title: "Adjust stock quantity",
-          roles: ["admin", "clinic_manager", "nurse"],
-          description: "Logs stock increase or decrease (usage, wastage, restock).",
-          parameters: [
-            { name: "itemId", type: "path", dataType: "string", required: true, description: "Item ID" }
-          ],
-          requestBody: {
-            change_quantity: -5,
-            reason: "usage"
-          },
-          responses: [
-            {
-              status: 201,
-              description: "201 Created — Stock adjusted",
+              code: 201,
+              description: "Stock adjusted",
               body: {
                 success: true,
                 data: {
                   id: "adj_4e9b12",
                   inventory_item_id: "itm_1a9c77",
-                  change_quantity: -5,
-                  reason: "usage",
-                  adjusted_by: "usr_7b1e90",
+                  quantity_change: -5,
                   resulting_quantity: 115,
-                  created_at: "2026-08-12T12:30:00Z"
+                  type: "dispensing",
+                  created_at: "2026-09-02T10:30:00Z"
                 }
-              }
-            }
-          ]
-        },
-        {
-          id: "inventory-low-stock",
-          method: "GET",
-          path: "/inventory/low-stock",
-          title: "Items at / below reorder level",
-          roles: ["admin", "clinic_manager"],
-          description: "Returns stock items where quantity_in_stock <= reorder_level for quick reordering.",
-          parameters: [],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Low stock items list",
-              body: {
-                success: true,
-                data: [
-                  {
-                    id: "itm_99a8b7",
-                    name: "Surgical Gloves (M)",
-                    category: "supply",
-                    unit: "box",
-                    quantity_in_stock: 12,
-                    reorder_level: 25,
-                    unit_cost: 65,
-                    clinic_id: "cli_a1b2c3"
-                  }
-                ]
               }
             }
           ]
@@ -2652,219 +1598,31 @@ const API_DATA = {
 
     {
       id: "notifications",
-      title: "Notifications",
+      title: "Queued Notifications & WebSockets",
       icon: "bell",
-      description: "SMS, WhatsApp, and email reminders, manual notification triggers, and read receipts",
+      description: "Asynchronous queued notification dispatch via SendNotificationJob and real-time private channel WebSocket broadcasting",
       endpoints: [
         {
           id: "notifications-list",
           method: "GET",
-          path: "/notifications",
-          title: "List sent / queued notifications",
-          roles: ["admin", "clinic_manager", "patient"],
-          description: "Lists notifications sent via SMS, WhatsApp, or email.",
-          parameters: [
-            { name: "recipient_id", type: "query", dataType: "string", required: false, description: "Filter by recipient ID" },
-            { name: "channel", type: "query", dataType: "string", required: false, description: "sms | whatsapp | email" },
-            { name: "status", type: "query", dataType: "string", required: false, description: "queued | sent | failed | read" }
-          ],
+          path: "/api/v1/notifications",
+          title: "List User Notifications",
+          roles: ["admin", "clinic_manager", "doctor", "receptionist", "nurse", "accountant", "patient"],
+          description: "Lists notifications for the authenticated user.",
+          parameters: [],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Notifications list",
+              code: 200,
+              description: "Notifications list",
               body: {
                 success: true,
                 data: [
                   {
                     id: "ntf_4c2e19",
-                    recipient_type: "patient",
-                    recipient_id: "pat_7c3f21",
-                    channel: "whatsapp",
-                    template_key: "appointment_reminder_24h",
-                    status: "sent",
-                    scheduled_at: "2026-08-14T11:30:00Z",
-                    sent_at: "2026-08-14T11:30:05Z"
-                  }
-                ],
-                meta: { page: 1, limit: 20, total: 210, total_pages: 11 }
-              }
-            }
-          ]
-        },
-        {
-          id: "notifications-send",
-          method: "POST",
-          path: "/notifications/send",
-          title: "Trigger manual notification",
-          roles: ["admin", "clinic_manager", "receptionist"],
-          description: "Triggers an immediate SMS or WhatsApp notification to a patient or staff member.",
-          parameters: [],
-          requestBody: {
-            recipient_type: "patient",
-            recipient_id: "pat_7c3f21",
-            channel: "sms",
-            template_key: "invoice_payment_due",
-            context: { invoice_id: "inv_2f7e11" }
-          },
-          responses: [
-            {
-              status: 201,
-              description: "201 Created — Notification queued",
-              body: {
-                success: true,
-                data: {
-                  id: "ntf_99x88y",
-                  recipient_type: "patient",
-                  recipient_id: "pat_7c3f21",
-                  channel: "sms",
-                  template_key: "invoice_payment_due",
-                  status: "queued"
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "notifications-read",
-          method: "PATCH",
-          path: "/notifications/{notificationId}/read",
-          title: "Mark read (patient portal)",
-          roles: ["patient"],
-          description: "Marks a notification as read by the patient.",
-          parameters: [
-            { name: "notificationId", type: "path", dataType: "string", required: true, description: "Notification ID" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Marked read",
-              body: { success: true, data: { id: "ntf_4c2e19", read_at: "2026-08-14T12:00:00Z" } }
-            }
-          ]
-        }
-      ]
-    },
-
-    {
-      id: "reports",
-      title: "Reports & Analytics",
-      icon: "chart-bar",
-      description: "Financial revenue reports, appointment volumes, no-show rates, and doctor performance",
-      endpoints: [
-        {
-          id: "reports-revenue",
-          method: "GET",
-          path: "/reports/revenue",
-          title: "Revenue over time",
-          roles: ["admin", "clinic_manager", "accountant"],
-          description: "Returns total revenue, collected payments, outstanding balances, and daily breakdown.",
-          parameters: [
-            { name: "date_from", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "date_to", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "clinic_id", type: "query", dataType: "string", required: false, description: "Filter by clinic ID" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Revenue report",
-              body: {
-                success: true,
-                data: {
-                  period: { from: "2026-07-01", to: "2026-07-31" },
-                  total_revenue: 184500,
-                  total_collected: 176200,
-                  total_outstanding: 8300,
-                  breakdown_by_day: [
-                    { date: "2026-07-01", revenue: 6200 }
-                  ]
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "reports-appointments-summary",
-          method: "GET",
-          path: "/reports/appointments-summary",
-          title: "Volume by status & doctor",
-          roles: ["admin", "clinic_manager"],
-          description: "Returns summary counts of appointments categorized by status and by doctor.",
-          parameters: [
-            { name: "date_from", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "date_to", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Appointments summary",
-              body: {
-                success: true,
-                data: {
-                  total_appointments: 412,
-                  by_status: { completed: 340, cancelled: 28, no_show: 22, scheduled: 22 },
-                  by_doctor: [
-                    { doctor_id: "doc_9f1a20", doctor_name: "Dr. Ahmed Hassan", count: 96 }
-                  ]
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "reports-noshow-rate",
-          method: "GET",
-          path: "/reports/no-show-rate",
-          title: "No-show percentage & trends",
-          roles: ["admin", "clinic_manager"],
-          description: "Calculates overall no-show rate percentage and monthly trend comparison.",
-          parameters: [
-            { name: "date_from", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "date_to", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — No-show metrics",
-              body: {
-                success: true,
-                data: {
-                  no_show_rate_percent: 5.3,
-                  total_appointments: 412,
-                  no_shows: 22,
-                  trend: [
-                    { month: "2026-06", rate_percent: 6.1 },
-                    { month: "2026-07", rate_percent: 5.3 }
-                  ]
-                }
-              }
-            }
-          ]
-        },
-        {
-          id: "reports-doctor-performance",
-          method: "GET",
-          path: "/reports/doctor-performance",
-          title: "Per-doctor metrics",
-          roles: ["admin", "clinic_manager"],
-          description: "Evaluates doctor performance metrics: completed consultations, revenue, average time.",
-          parameters: [
-            { name: "date_from", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "date_to", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Performance metrics",
-              body: {
-                success: true,
-                data: [
-                  {
-                    doctor_id: "doc_9f1a20",
-                    doctor_name: "Dr. Ahmed Hassan",
-                    appointments_completed: 89,
-                    average_consultation_minutes: 24,
-                    revenue_generated: 31150,
-                    patient_satisfaction_score: 4.7
+                    title: "New Booking Received",
+                    body: "Patient Mohamed Ibrahim booked an appointment for 10/09/2026.",
+                    read_at: null,
+                    created_at: "2026-09-02T09:00:00Z"
                   }
                 ]
               }
@@ -2872,126 +1630,46 @@ const API_DATA = {
           ]
         },
         {
-          id: "reports-patients-growth",
+          id: "notifications-unread-count",
           method: "GET",
-          path: "/reports/patients-growth",
-          title: "New patients acquisition over time",
-          roles: ["admin", "clinic_manager"],
-          description: "Measures patient growth and monthly registration figures.",
-          parameters: [
-            { name: "date_from", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "date_to", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" }
-          ],
+          path: "/api/v1/notifications/unread-count",
+          title: "Get Unread Badge Count",
+          roles: ["admin", "clinic_manager", "doctor", "receptionist", "nurse", "accountant", "patient"],
+          description: "Returns count of unread notifications for badge counters.",
+          parameters: [],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Growth statistics",
-              body: {
-                success: true,
-                data: {
-                  new_patients_total: 58,
-                  by_month: [
-                    { month: "2026-06", new_patients: 26 },
-                    { month: "2026-07", new_patients: 32 }
-                  ]
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-
-    {
-      id: "audit",
-      title: "Audit Logs",
-      icon: "history",
-      description: "Compliance audit logging for all patient, medical, and billing mutations",
-      endpoints: [
-        {
-          id: "audit-logs-list",
-          method: "GET",
-          path: "/audit-logs",
-          title: "List system activity logs",
-          roles: ["admin"],
-          description: "Retrieves complete audit trail logs for data modification actions.",
-          parameters: [
-            { name: "actor_id", type: "query", dataType: "string", required: false, description: "Filter by user ID" },
-            { name: "resource_type", type: "query", dataType: "string", required: false, description: "patient | consultation | invoice | prescription" },
-            { name: "resource_id", type: "query", dataType: "string", required: false, description: "Target resource ID" },
-            { name: "date_from", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" },
-            { name: "date_to", type: "query", dataType: "string", required: false, description: "YYYY-MM-DD" }
-          ],
-          responses: [
-            {
-              status: 200,
-              description: "200 OK — Audit trail logs",
-              body: {
-                success: true,
-                data: [
-                  {
-                    id: "log_9e3f01",
-                    actor_id: "usr_7b1e90",
-                    action: "invoice.payment_recorded",
-                    resource_type: "invoice",
-                    resource_id: "inv_2f7e11",
-                    changes: { amount_paid: { from: 0, to: 350 } },
-                    ip_address: "41.238.12.4",
-                    created_at: "2026-08-12T12:05:03Z"
-                  }
-                ],
-                meta: { page: 1, limit: 20, total: 1840, total_pages: 92 }
-              }
+              code: 200,
+              description: "Unread count",
+              body: { success: true, data: { unread_count: 3 } }
             }
           ]
         },
         {
-          id: "audit-logs-get",
-          method: "GET",
-          path: "/audit-logs/{logId}",
-          title: "Get single audit log entry",
-          roles: ["admin"],
-          description: "Fetches full details of a specific audit log record.",
-          parameters: [
-            { name: "logId", type: "path", dataType: "string", required: true, description: "Log entry ID (e.g. log_9e3f01)" }
-          ],
+          id: "notifications-mark-all-read",
+          method: "POST",
+          path: "/api/v1/notifications/mark-all-read",
+          title: "Mark All As Read",
+          roles: ["admin", "clinic_manager", "doctor", "receptionist", "nurse", "accountant", "patient"],
+          description: "Marks all notifications for the authenticated user as read.",
+          parameters: [],
           responses: [
             {
-              status: 200,
-              description: "200 OK — Log entry details",
-              body: {
-                success: true,
-                data: {
-                  id: "log_9e3f01",
-                  actor_id: "usr_7b1e90",
-                  action: "invoice.payment_recorded",
-                  resource_type: "invoice",
-                  resource_id: "inv_2f7e11",
-                  changes: { amount_paid: { from: 0, to: 350 } },
-                  ip_address: "41.238.12.4",
-                  created_at: "2026-08-12T12:05:03Z"
-                }
-              }
+              code: 200,
+              description: "All marked as read",
+              body: { success: true, data: { message: "All notifications marked as read." } }
             }
           ]
         }
       ]
     }
-  ],
-
-  errors: [
-    { status: 400, code: "MALFORMED_REQUEST", meaning: "Request body isn't valid JSON or is missing entirely", fix: "Check Content-Type header and body syntax" },
-    { status: 401, code: "UNAUTHENTICATED", meaning: "Missing or invalid access token", fix: "Re-authenticate via /auth/login or /auth/refresh" },
-    { status: 401, code: "INVALID_CREDENTIALS", meaning: "Wrong email/password on login", fix: "Verify credentials" },
-    { status: 403, code: "FORBIDDEN", meaning: "Token is valid but role lacks permission for this action", fix: "Confirm user's role and required permission" },
-    { status: 404, code: "RESOURCE_NOT_FOUND", meaning: "Requested {id} doesn't exist or isn't in scope for clinic", fix: "Confirm ID and X-Clinic-Id header" },
-    { status: 409, code: "CONFLICT", meaning: "Request conflicts with current state (double-booked slot, duplicate ID, invalid state)", fix: "Read error.details for specific conflict" },
-    { status: 422, code: "VALIDATION_ERROR", meaning: "Body failed schema validation", fix: "Read error.details for field-level errors" },
-    { status: 429, code: "RATE_LIMITED", meaning: "Too many requests", fix: "Respect Retry-After header before retrying" },
-    { status: 500, code: "INTERNAL_ERROR", meaning: "Unexpected server fault", fix: "Retry with backoff; contact support if it persists" }
   ]
 };
 
 if (typeof window !== "undefined") {
   window.API_DATA = API_DATA;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = API_DATA;
 }

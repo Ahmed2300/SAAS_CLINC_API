@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     selectedMethod: "ALL",
     searchQuery: "",
     authToken: "",
+    tenantId: data.info.defaultTenant || "elshifa",
     clinicId: data.info.defaultClinicId,
     expandedEndpoints: new Set()
   };
@@ -28,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnCloseAuthModal = document.getElementById("btn-close-auth-modal");
   const btnSaveAuth = document.getElementById("btn-save-auth");
   const inputAuthToken = document.getElementById("input-auth-token");
+  const inputTenantId = document.getElementById("input-tenant-id");
   const inputClinicId = document.getElementById("input-clinic-id");
   const filterPills = document.querySelectorAll(".swagger-filter-pill");
 
@@ -68,8 +70,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnSaveAuth) {
     btnSaveAuth.addEventListener("click", () => {
-      state.authToken = inputAuthToken.value.trim();
-      state.clinicId = inputClinicId.value.trim() || data.info.defaultClinicId;
+      state.authToken = inputAuthToken ? inputAuthToken.value.trim() : "";
+      state.tenantId = inputTenantId ? inputTenantId.value.trim() || data.info.defaultTenant : data.info.defaultTenant;
+      state.clinicId = inputClinicId ? inputClinicId.value.trim() || data.info.defaultClinicId : data.info.defaultClinicId;
       
       if (state.authToken) {
         btnAuthorize.classList.add("authorized");
@@ -362,6 +365,10 @@ document.addEventListener("DOMContentLoaded", () => {
       curl += ` \\\n  -H "Authorization: ${state.authToken}"`;
     } else {
       curl += ` \\\n  -H "Authorization: Bearer sample_access_token_xyz"`;
+    }
+
+    if (state.tenantId) {
+      curl += ` \\\n  -H "X-Tenant: ${state.tenantId}"`;
     }
 
     curl += ` \\\n  -H "X-Clinic-Id: ${state.clinicId}"`;
